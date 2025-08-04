@@ -1,4 +1,43 @@
-import { createApp } from 'vue'
-import App from './App.vue'
+import { createApp } from "vue";
+import App from "./App.vue";
+import router from "./router";
+import AdminHome from "./components/AdminHome.vue";
+import ProductList from "./components/ProductList.vue";
+import BrandList from "./components/BrandList.vue";
+import TypeList from "./components/TypeList.vue";
+import ColorList from "./components/ColorList.vue";
+import SizeList from "./components/SizeList.vue";
+import OrderPending from "./components/OrderPending.vue";
+import OrderShipping from "./components/OrderShipping.vue";
+import OrderSuccess from "./components/OrderSuccess.vue";
+import OrderRefundApply from "./components/OrderRefundApply.vue";
+import OrderRefunded from "./components/OrderRefunded.vue";
+import OrderCancelled from "./components/OrderCancelled.vue";
+import UserList from "./components/UserList.vue";
+import ReportPerformance from "./components/ReportPerformance.vue";
+import ReportMarketing from "./components/ReportMarketing.vue";
+import ReportTraffic from "./components/ReportTraffic.vue";
+import LinkManage from "./components/LinkManage.vue";
+import AdManage from "./components/AdManage.vue";
 
-createApp(App).mount('#app')
+const app = createApp(App);
+app.use(router);
+app.component("AdminHome", AdminHome);
+app.component("ProductList", ProductList);
+app.component("BrandList", BrandList);
+app.component("TypeList", TypeList);
+app.component("ColorList", ColorList);
+app.component("SizeList", SizeList);
+app.component("OrderPending", OrderPending);
+app.component("OrderShipping", OrderShipping);
+app.component("OrderSuccess", OrderSuccess);
+app.component("OrderRefundApply", OrderRefundApply);
+app.component("OrderRefunded", OrderRefunded);
+app.component("OrderCancelled", OrderCancelled);
+app.component("UserList", UserList);
+app.component("ReportPerformance", ReportPerformance);
+app.component("ReportMarketing", ReportMarketing);
+app.component("ReportTraffic", ReportTraffic);
+app.component("LinkManage", LinkManage);
+app.component("AdManage", AdManage);
+app.mount("#app");
