@@ -1,12 +1,1177 @@
 <template>
-    <div class="placeholder">Size List Placeholder</div>
+    <div class="size-container">
+        <div class="size-header">
+            <h2 class="title">
+                <span class="icon">📏</span>
+                Size Management
+            </h2>
+            <div class="size-count">Total: {{ totalCount }} sizes</div>
+        </div>
+
+        <div class="action-bar">
+            <button class="batch-action-btn" @click="toggleBatchStatus" :disabled="selectedSizes.length === 0">
+                <span class="btn-icon">🔄</span>
+                Batch Enable/Disable ({{ selectedSizes.length }})
+            </button>
+            <button class="add-btn" @click="showAddDialog">
+                <span class="btn-icon">➕</span>
+                Add New Size
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="size-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-col">
+                            <input type="checkbox" v-model="selectAll" @change="handleSelectAll"
+                                class="custom-checkbox">
+                        </th>
+                        <th class="index-col">No.</th>
+                        <th class="size-col">Size</th>
+                        <th class="remark-col">Remark</th>
+                        <th class="status-col">Status</th>
+                        <th class="action-col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="(size, index) in sizes" :key="size.sizeId" class="size-row"
+                        :class="{ 'even-row': index % 2 === 1 }">
+                        <td class="checkbox-col">
+                            <input type="checkbox" v-model="selectedSizes" :value="size.sizeId" class="custom-checkbox">
+                        </td>
+                        <td class="index-col">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
+                        <td class="size-col">
+                            <span class="size-value">{{ size.size }}</span>
+                        </td>
+                        <td class="remark-col">
+                            <span class="size-remark" :title="size.sizeRemark">{{ size.sizeRemark || 'No remark'
+                                }}</span>
+                        </td>
+                        <td class="status-col">
+                            <label class="switch">
+                                <input type="checkbox" :checked="!size.sizeDisabled"
+                                    @change="toggleStatus(size.sizeId)" />
+                                <span class="slider"></span>
+                            </label>
+                            <span class="status-text" :class="{ 'disabled-text': size.sizeDisabled }">{{
+                                size.sizeDisabled ? 'Disabled' : 'Enabled' }}</span>
+                        </td>
+                        <td class="action-col">
+                            <button class="edit-btn" @click="showEditDialog(size)" title="Edit Size">
+                                ✏️
+                            </button>
+                            <button class="delete-btn" @click="deleteSize(size.sizeId)" title="Delete Size">
+                                🗑️
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span>Page {{ currentPage }} of {{ totalPages }}</span>
+                <span class="page-size-control">
+                    Items per page:
+                    <input type="number" v-model.number="pageSize" @change="handlePageSizeChange" min="1" max="100"
+                        class="page-size-input">
+                </span>
+            </div>
+            <div class="pagination-controls">
+                <button class="page-btn" @click="goToPage(1)" :disabled="currentPage === 1">First</button>
+                <button class="page-btn" @click="goToPage(currentPage - 1)"
+                    :disabled="currentPage === 1">Previous</button>
+                <span class="page-numbers">
+                    <button v-for="page in visiblePages" :key="page" class="page-number-btn"
+                        :class="{ 'active': page === currentPage }" @click="goToPage(page)">
+                        {{ page }}
+                    </button>
+                </span>
+                <button class="page-btn" @click="goToPage(currentPage + 1)"
+                    :disabled="currentPage === totalPages">Next</button>
+                <button class="page-btn" @click="goToPage(totalPages)"
+                    :disabled="currentPage === totalPages">Last</button>
+            </div>
+        </div>
+
+        <!-- Add/Edit Size Dialog -->
+        <div v-if="showDialog" class="dialog-overlay" @click="closeDialog">
+            <div class="dialog" @click.stop>
+                <div class="dialog-header">
+                    <h3>{{ isEditMode ? 'Edit Size' : 'Add New Size' }}</h3>
+                    <button class="close-btn" @click="closeDialog">✕</button>
+                </div>
+                <div class="dialog-content">
+                    <form @submit.prevent="isEditMode ? updateSize() : addSize()">
+                        <div class="form-group">
+                            <label for="size">Size:</label>
+                            <input type="number" id="size" v-model.number="newSize.size" required class="form-input"
+                                step="0.5" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="sizeRemark">Remark:</label>
+                            <textarea id="sizeRemark" v-model="newSize.sizeRemark" class="form-textarea"
+                                placeholder="Optional size description or remarks"></textarea>
+                        </div>
+                        <div class="form-group" v-if="isEditMode">
+                            <label for="sizeDisabled">Status:</label>
+                            <select id="sizeDisabled" v-model="newSize.sizeDisabled" class="form-input">
+                                <option :value="0">Enabled</option>
+                                <option :value="1">Disabled</option>
+                            </select>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" @click="closeDialog" class="cancel-btn">Cancel</button>
+                            <button type="submit" :disabled="uploading || !newSize.size || (isEditMode && !hasChanges)"
+                                class="submit-btn">
+                                {{ uploading ? (isEditMode ? 'Updating Size...' : 'Adding Size...') : (isEditMode ?
+                                    'Update Size' : 'Add Size') }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="loading" class="loading">Loading sizes...</div>
+        <div v-if="error" class="error">{{ error }}</div>
+    </div>
 </template>
-<script>export default { name: 'SizeList' }</script>
+
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+
+// Reactive data
+const sizes = ref([])
+const selectedSizes = ref([])
+const loading = ref(false)
+const error = ref('')
+const showDialog = ref(false)
+const uploading = ref(false)
+
+// Edit mode state
+const isEditMode = ref(false)
+const originalSize = ref({})
+
+// Pagination data
+const currentPage = ref(1)
+const pageSize = ref(5)
+const totalCount = ref(0)
+
+// New size form data
+const newSize = ref({
+    sizeId: null,
+    size: null,
+    sizeRemark: '',
+    sizeDisabled: 0
+})
+
+// Computed property for select all checkbox
+const selectAll = computed({
+    get() {
+        return sizes.value.length > 0 && selectedSizes.value.length === sizes.value.length
+    },
+    set(value) {
+        if (value) {
+            selectedSizes.value = sizes.value.map(size => size.sizeId)
+        } else {
+            selectedSizes.value = []
+        }
+    }
+})
+
+// Pagination computed properties
+const totalPages = computed(() => {
+    return Math.ceil(totalCount.value / pageSize.value)
+})
+
+const visiblePages = computed(() => {
+    const pages = []
+    const start = Math.max(1, currentPage.value - 2)
+    const end = Math.min(totalPages.value, currentPage.value + 2)
+
+    for (let i = start; i <= end; i++) {
+        pages.push(i)
+    }
+    return pages
+})
+
+// Check if there are changes in edit mode
+const hasChanges = computed(() => {
+    if (!isEditMode.value) return true
+
+    return newSize.value.size !== originalSize.value.size ||
+        newSize.value.sizeRemark !== originalSize.value.sizeRemark ||
+        newSize.value.sizeDisabled !== originalSize.value.sizeDisabled
+})
+
+// Fetch sizes data
+const fetchSizes = async () => {
+    loading.value = true
+    error.value = ''
+    try {
+        console.log('Fetching size data from API...')
+        const params = new URLSearchParams();
+        params.append('pageNum', currentPage.value);
+        params.append('pageSize', pageSize.value);
+        const response = await axios.post('/api/shoesSize/getPage', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+
+        if (response.data && response.data.data) {
+            const pageInfo = response.data.data
+            sizes.value = pageInfo.list || []
+            totalCount.value = pageInfo.total || 0
+            console.log(`Successfully loaded ${sizes.value.length} sizes, total: ${totalCount.value}`)
+        } else {
+            console.warn('Unexpected API response structure:', response.data)
+            sizes.value = []
+            totalCount.value = 0
+        }
+    } catch (error) {
+        console.error('Error fetching sizes:', error)
+        error.value = 'Failed to load size data. Please try again.'
+        sizes.value = []
+        totalCount.value = 0
+    } finally {
+        loading.value = false
+    }
+}
+
+// Handle select all checkbox
+const handleSelectAll = () => {
+    if (selectAll.value) {
+        selectedSizes.value = sizes.value.map(size => size.sizeId)
+    } else {
+        selectedSizes.value = []
+    }
+}
+
+// Toggle batch status
+const toggleBatchStatus = async () => {
+    if (selectedSizes.value.length === 0) {
+        return
+    }
+
+    if (!confirm(`Are you sure you want to toggle the status of ${selectedSizes.value.length} selected sizes?`)) {
+        return
+    }
+
+    loading.value = true
+    error.value = ''
+    try {
+        for (const sizeId of selectedSizes.value) {
+            await toggleStatus(sizeId)
+        }
+
+        selectedSizes.value = []
+        await fetchSizes() // Refresh the list
+    } catch (error) {
+        console.error('Error toggling sizes status:', error)
+        error.value = 'Failed to toggle sizes status. Please try again.'
+    } finally {
+        loading.value = false
+    }
+}
+
+// Delete single size
+const deleteSize = async (sizeId, showConfirm = true) => {
+    if (showConfirm && !confirm(`Are you sure you want to delete this size?`)) {
+        return
+    }
+
+    loading.value = true
+    error.value = ''
+    try {
+        const params = new URLSearchParams();
+        params.append('sizeId', sizeId);
+
+        console.log('Delete size params:', { sizeId: sizeId });
+
+        const response = await axios.post('/api/shoesSize/deleteShoesSize', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
+            console.log('Delete size success:', response.data);
+            if (showConfirm) {
+                await fetchSizes() // Refresh the list only for single delete
+            }
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
+        }
+    } catch (error) {
+        console.error('Error deleting size:', error)
+        error.value = 'Failed to delete size. Please try again.'
+    } finally {
+        if (showConfirm) {
+            loading.value = false
+        }
+    }
+}
+
+// Toggle size status
+const toggleStatus = async (sizeId) => {
+    loading.value = true
+    error.value = ''
+    try {
+        const params = new URLSearchParams();
+        params.append('sizeId', sizeId);
+
+        console.log('Toggle size status params:', { sizeId: sizeId });
+
+        const response = await axios.post('/api/shoesSize/toggleStatus', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
+            console.log('Toggle size status success:', response.data);
+            await fetchSizes() // Refresh the list
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Toggle status failed')
+        }
+    } catch (error) {
+        console.error('Error toggling size status:', error)
+        error.value = 'Failed to toggle size status. Please try again.'
+    } finally {
+        loading.value = false
+    }
+}
+
+// Show add dialog
+const showAddDialog = () => {
+    isEditMode.value = false
+    showDialog.value = true
+    resetForm()
+}
+
+// Show edit dialog
+const showEditDialog = (size) => {
+    isEditMode.value = true
+    originalSize.value = { ...size }
+    newSize.value = {
+        sizeId: size.sizeId,
+        size: size.size,
+        sizeRemark: size.sizeRemark || '',
+        sizeDisabled: size.sizeDisabled
+    }
+
+    showDialog.value = true
+    error.value = ''
+}
+
+// Close dialog
+const closeDialog = () => {
+    showDialog.value = false
+    resetForm()
+}
+
+// Reset form
+const resetForm = () => {
+    isEditMode.value = false
+    originalSize.value = {}
+    newSize.value = {
+        sizeId: null,
+        size: null,
+        sizeRemark: '',
+        sizeDisabled: 0
+    }
+    error.value = ''
+}
+
+// Add new size
+const addSize = async () => {
+    // Basic validation
+    if (!newSize.value.size) {
+        error.value = 'Please enter size value'
+        return
+    }
+
+    loading.value = true
+    uploading.value = true
+    error.value = ''
+
+    try {
+        console.log('Starting to insert size data...')
+        console.log('Data to insert:', {
+            size: newSize.value.size,
+            sizeRemark: newSize.value.sizeRemark
+        })
+
+        const params = new URLSearchParams();
+        params.append('size', newSize.value.size);
+        params.append('sizeRemark', newSize.value.sizeRemark);
+
+        const response = await axios.post('/api/shoesSize/insertShoesSize', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        console.log('Insert size response:', response.data)
+
+        if (response.data && (response.data.ok === true || response.data.code === 200)) {
+            console.log('Add size success:', response.data);
+            closeDialog()
+            await fetchSizes() // Refresh list
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Add size failed')
+        }
+    } catch (error) {
+        console.error('Error adding size:', error)
+        console.error('Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            statusText: error.response?.statusText
+        })
+
+        let errorMessage = 'Failed to add size, please try again'
+        if (error.response?.data) {
+            const serverError = error.response.data
+            if (serverError.msg) {
+                errorMessage = `Server error: ${serverError.msg}`
+            } else if (serverError.message) {
+                errorMessage = `Server error: ${serverError.message}`
+            } else if (error.response.status === 500) {
+                errorMessage = 'Server internal error, please check data format or contact administrator'
+            }
+        } else if (error.message) {
+            errorMessage = error.message
+        }
+
+        error.value = errorMessage
+    } finally {
+        loading.value = false
+        uploading.value = false
+    }
+}
+
+// Update existing size
+const updateSize = async () => {
+    // Basic validation
+    if (!newSize.value.size) {
+        error.value = 'Please enter size value'
+        return
+    }
+
+    loading.value = true
+    uploading.value = true
+    error.value = ''
+
+    try {
+        console.log('Starting to update size data...')
+        console.log('Data to update:', {
+            sizeId: newSize.value.sizeId,
+            size: newSize.value.size,
+            sizeRemark: newSize.value.sizeRemark,
+            sizeDisabled: newSize.value.sizeDisabled
+        })
+
+        const params = new URLSearchParams();
+        params.append('sizeId', newSize.value.sizeId);
+        params.append('size', newSize.value.size);
+        params.append('sizeRemark', newSize.value.sizeRemark);
+        params.append('sizeDisabled', newSize.value.sizeDisabled);
+
+        const response = await axios.post('/api/shoesSize/updateShoesSize', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        console.log('Update size response:', response.data)
+
+        if (response.data && (response.data.ok === true || response.data.code === 200)) {
+            console.log('Update size success:', response.data);
+            closeDialog()
+            await fetchSizes() // Refresh list
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Update size failed')
+        }
+    } catch (error) {
+        console.error('Error updating size:', error)
+        console.error('Error details:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            statusText: error.response?.statusText
+        })
+
+        let errorMessage = 'Failed to update size, please try again'
+        if (error.response?.data) {
+            const serverError = error.response.data
+            if (serverError.msg) {
+                errorMessage = `Server error: ${serverError.msg}`
+            } else if (serverError.message) {
+                errorMessage = `Server error: ${serverError.message}`
+            } else if (error.response.status === 500) {
+                errorMessage = 'Server internal error, please check data format or contact administrator'
+            }
+        } else if (error.message) {
+            errorMessage = error.message
+        }
+
+        error.value = errorMessage
+    } finally {
+        loading.value = false
+        uploading.value = false
+    }
+}
+
+// Pagination methods
+const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages.value && page !== currentPage.value) {
+        currentPage.value = page
+        selectedSizes.value = [] // Clear selection when changing page
+        fetchSizes()
+    }
+}
+
+const handlePageSizeChange = () => {
+    currentPage.value = 1 // Reset to first page when changing page size
+    selectedSizes.value = [] // Clear selection
+    fetchSizes()
+}
+
+// Lifecycle hook
+onMounted(() => {
+    fetchSizes()
+})
+</script>
+
 <style scoped>
-.placeholder {
+.size-container {
+    max-width: 1400px;
+    width: 95%;
+    margin: 20px auto;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    font-family: 'Playfair Display', 'Georgia', serif;
+}
+
+.size-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgb(211, 169, 101);
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 600;
     color: rgb(211, 169, 101);
-    background: rgb(243, 242, 234);
-    padding: 40px;
-    font-size: 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.icon {
+    font-size: 2.2rem;
+}
+
+.size-count {
+    font-size: 1.1rem;
+    color: #666;
+    font-weight: 500;
+    background: rgba(211, 169, 101, 0.1);
+    padding: 8px 16px;
+    border-radius: 20px;
+}
+
+.action-bar {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.batch-action-btn,
+.add-btn {
+    border: none;
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Playfair Display', serif;
+}
+
+.batch-action-btn {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.add-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.batch-action-btn:hover:not(:disabled),
+.add-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.batch-action-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-icon {
+    font-size: 1.1rem;
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.size-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Lora', 'Georgia', serif;
+}
+
+.size-table thead tr {
+    background: linear-gradient(135deg, rgb(211, 169, 101), #d4af37);
+    color: white;
+}
+
+.size-table th,
+.size-table td {
+    text-align: center;
+}
+
+.size-table th {
+    padding: 16px 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    color: white !important;
+}
+
+.size-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.size-row {
+    transition: all 0.2s ease;
+}
+
+.size-row:hover {
+    background: rgba(211, 169, 101, 0.05);
+    transform: translateY(-1px);
+}
+
+.even-row {
+    background: rgba(243, 242, 234, 0.3);
+}
+
+.checkbox-col {
+    width: 50px;
+    text-align: center;
+}
+
+.index-col {
+    width: 60px;
+    text-align: center;
+    font-weight: 600;
+    color: rgb(211, 169, 101);
+}
+
+.size-col {
+    width: 120px;
+    font-family: 'Lora', 'Georgia', serif;
+}
+
+.size-value {
+    font-weight: 600;
+    color: #333;
+    font-family: 'Lora', 'Georgia', serif;
+    font-size: 1.1rem;
+    background: rgba(211, 169, 101, 0.1);
+    padding: 4px 12px;
+    border-radius: 6px;
+    display: inline-block;
+    min-width: 40px;
+}
+
+.remark-col {
+    width: 300px;
+    text-align: center;
+    padding: 8px 4px;
+    font-family: 'Lora', 'Georgia', serif;
+}
+
+.size-remark {
+    color: #666;
+    font-size: 0.9rem;
+    max-width: 280px;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+.status-col {
+    width: 140px;
+    text-align: center;
+    font-family: 'Lora', 'Georgia', serif;
+}
+
+/* Switch Toggle for Status */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+    min-width: 48px;
+    vertical-align: middle;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #ccc;
+    transition: .4s;
+    border-radius: 26px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.switch input:checked+.slider {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+.switch input:checked+.slider:before {
+    transform: translateX(22px);
+}
+
+.status-text {
+    display: inline-block;
+    min-width: 60px;
+    margin-left: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: left;
+    vertical-align: middle;
+    color: #28a745;
+}
+
+.status-text.disabled-text {
+    color: #dc3545;
+}
+
+.action-col {
+    width: 120px;
+    text-align: center;
+}
+
+.edit-btn,
+.delete-btn {
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    margin: 0 2px;
+}
+
+.edit-btn {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.delete-btn {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.edit-btn:hover,
+.delete-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.custom-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: rgb(211, 169, 101);
+}
+
+/* Dialog Styles */
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, rgb(211, 169, 101), #d4af37);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.dialog-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.dialog-content {
+    padding: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: rgb(211, 169, 101);
+}
+
+.form-textarea {
+    height: 80px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.cancel-btn,
+.submit-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.cancel-btn {
+    background: #6c757d;
+    color: white;
+}
+
+.submit-btn {
+    background: linear-gradient(135deg, rgb(211, 169, 101), #d4af37);
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #5a6268;
+}
+
+.submit-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(211, 169, 101, 0.3);
+}
+
+.submit-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Pagination */
+.pagination-container {
+    margin-top: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px;
+    background: rgba(243, 242, 234, 0.3);
+    border-radius: 12px;
+    font-family: 'Lora', 'Georgia', serif;
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    color: #666;
+    font-weight: 500;
+}
+
+.page-size-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-size-input {
+    width: 60px;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: border-color 0.3s ease;
+}
+
+.page-size-input:focus {
+    outline: none;
+    border-color: rgb(211, 169, 101);
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.page-btn {
+    background: white;
+    color: rgb(211, 169, 101);
+    border: 1px solid rgb(211, 169, 101);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    font-family: 'Lora', serif;
+}
+
+.page-btn:hover:not(:disabled) {
+    background: rgb(211, 169, 101);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.page-btn:disabled {
+    background: #f5f5f5;
+    color: #ccc;
+    border-color: #ddd;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 4px;
+}
+
+.page-number-btn {
+    background: white;
+    color: rgb(211, 169, 101);
+    border: 1px solid rgb(211, 169, 101);
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    min-width: 40px;
+    font-family: 'Lora', serif;
+}
+
+.page-number-btn:hover {
+    background: rgba(211, 169, 101, 0.1);
+    transform: translateY(-1px);
+}
+
+.page-number-btn.active {
+    background: rgb(211, 169, 101);
+    color: white;
+    font-weight: 600;
+}
+
+.loading,
+.error {
+    text-align: center;
+    padding: 20px;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.loading {
+    color: rgb(211, 169, 101);
+}
+
+.error {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .size-container {
+        width: 98%;
+        padding: 16px;
+    }
+
+    .size-table th,
+    .size-table td {
+        padding: 10px 8px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .size-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .action-bar {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .batch-action-btn,
+    .add-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .dialog {
+        width: 95%;
+        margin: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .size-container {
+        margin: 10px;
+        padding: 12px;
+    }
+
+    .title {
+        font-size: 1.3rem;
+    }
+
+    .size-table th,
+    .size-table td {
+        padding: 8px 4px;
+        font-size: 0.8rem;
+    }
+
+    .remark-col {
+        width: 200px;
+    }
+
+    .size-remark {
+        max-width: 180px;
+    }
 }
 </style>

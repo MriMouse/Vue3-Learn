@@ -450,7 +450,7 @@ const addLink = async () => {
     try {
         let imagePath = ''
 
-        // 只有在用户确实要添加链接时才上传图片
+        // 如果用户选择了图片，先上传图片获取唯一文件名
         if (newLink.value.imageFile) {
             console.log('开始上传图片...', {
                 fileName: newLink.value.imageFile.name,
@@ -470,9 +470,9 @@ const addLink = async () => {
 
                 // 检查服务器返回的数据结构
                 if (uploadResponse.data && (uploadResponse.data.ok || uploadResponse.data.code === 200)) {
-                    // 服务器返回的是文件名，需要添加/前缀来匹配数据库格式
+                    // 服务器返回的是唯一文件名，需要添加/前缀来匹配数据库格式
                     imagePath = '/' + uploadResponse.data.data
-                    console.log('图片上传成功:', imagePath)
+                    console.log('图片上传成功，唯一文件名:', imagePath)
                 } else {
                     throw new Error(uploadResponse.data?.msg || uploadResponse.data?.message || '图片上传失败')
                 }
@@ -583,21 +583,73 @@ const updateLink = async () => {
     try {
         let imagePath = newLink.value.img // 默认使用原有图片路径
 
-        // 如果用户选择了新图片，设置新的图片路径
+        // 如果用户选择了新图片，先上传图片获取唯一文件名
         if (newLink.value.imageFile) {
-            // 构建新的图片路径：/文件名
-            imagePath = '/' + newLink.value.imageFile.name
-            console.log('准备更新的图片路径:', imagePath)
+            console.log('开始上传新图片...', {
+                fileName: newLink.value.imageFile.name,
+                fileSize: newLink.value.imageFile.size,
+                fileType: newLink.value.imageFile.type
+            })
+
+            const formData = new FormData()
+            formData.append('image', newLink.value.imageFile)
+
+            try {
+                const uploadResponse = await axios.post('/api/link/uploadImage', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                })
+
+                console.log('图片上传响应:', uploadResponse.data)
+
+                // 检查服务器返回的数据结构
+                if (uploadResponse.data && (uploadResponse.data.ok || uploadResponse.data.code === 200)) {
+                    // 服务器返回的是唯一文件名，需要添加/前缀来匹配数据库格式
+                    imagePath = '/' + uploadResponse.data.data
+                    console.log('图片上传成功，唯一文件名:', imagePath)
+                } else {
+                    throw new Error(uploadResponse.data?.msg || uploadResponse.data?.message || '图片上传失败')
+                }
+            } catch (uploadError) {
+                console.error('图片上传失败:', uploadError)
+
+                // 处理不同类型的上传错误
+                if (uploadError.response?.status === 413) {
+                    throw new Error('图片文件过大，请选择更小的图片文件')
+                } else if (uploadError.response?.status === 415) {
+                    throw new Error('不支持的文件类型，请选择有效的图片文件')
+                } else {
+                    throw new Error(`图片上传失败: ${uploadError.message}`)
+                }
+            }
         }
 
-        // 先更新链接数据
+        // 图片上传成功（或无新图片）后，更新链接数据
         console.log('开始更新链接数据...')
+
+        // 准备旧图片路径用于后端删除
+        const oldImagePath = originalLink.value.img || '' // 获取原始图片路径
+        const oldImgName = oldImagePath.replace(/^\//, '') // 移除开头的 / 符号，得到文件名
+
+        // 如果没有上传新图片，传递"WSY"告诉后端没有修改图片
+        // 如果上传了新图片且原来有图片，传递旧图片文件名用于删除
+        // 如果上传了新图片但原来没有图片，传递空字符串
+        let oldImgToDelete;
+        if (!newLink.value.imageFile) {
+            oldImgToDelete = 'WSY'; // 没有修改图片
+        } else if (oldImgName) {
+            oldImgToDelete = oldImgName; // 有新图片且有旧图片，删除旧图片
+        } else {
+            oldImgToDelete = ''; // 有新图片但没有旧图片
+        }
+
         console.log('准备更新的数据:', {
             id: newLink.value.id,
             name: newLink.value.name.trim(),
             url: newLink.value.url.trim(),
             img: imagePath,
-            remark: newLink.value.remark.trim()
+            remark: newLink.value.remark.trim(),
+            oldImg: oldImgToDelete,
+            hasNewImage: !!newLink.value.imageFile
         })
 
         const params = new URLSearchParams();
@@ -606,6 +658,7 @@ const updateLink = async () => {
         params.append('url', newLink.value.url.trim());
         params.append('img', imagePath);
         params.append('remark', newLink.value.remark.trim());
+        params.append('oldImg', oldImgToDelete);
 
         // 打印发送的参数
         console.log('发送的更新参数:', {
@@ -613,7 +666,10 @@ const updateLink = async () => {
             name: newLink.value.name.trim(),
             url: newLink.value.url.trim(),
             img: imagePath,
-            remark: newLink.value.remark.trim()
+            remark: newLink.value.remark.trim(),
+            oldImg: oldImgToDelete,
+            hasNewImage: !!newLink.value.imageFile,
+            imageAction: oldImgToDelete === 'WSY' ? '未修改图片' : oldImgToDelete ? '删除旧图片' : '新增图片'
         })
 
         const response = await axios.post('/api/link/updateLink', params, {
@@ -625,37 +681,6 @@ const updateLink = async () => {
         // 检查更新链接的响应格式
         if (response.data && (response.data.ok === true || response.data.code === 200)) {
             console.log('更新链接成功:', response.data);
-
-            // 链接更新成功后，如果有新图片才上传图片
-            if (newLink.value.imageFile) {
-                console.log('开始上传新图片...', {
-                    fileName: newLink.value.imageFile.name,
-                    fileSize: newLink.value.imageFile.size,
-                    fileType: newLink.value.imageFile.type
-                })
-
-                const formData = new FormData()
-                formData.append('image', newLink.value.imageFile)
-
-                try {
-                    const uploadResponse = await axios.post('/api/link/uploadImage', formData, {
-                        headers: { 'Content-Type': 'multipart/form-data' }
-                    })
-
-                    console.log('图片上传响应:', uploadResponse.data)
-
-                    // 图片上传成功，但不需要处理返回值，因为链接已经更新了
-                    if (uploadResponse.data && (uploadResponse.data.ok || uploadResponse.data.code === 200)) {
-                        console.log('图片上传成功')
-                    } else {
-                        console.warn('图片上传可能失败，但链接已更新:', uploadResponse.data)
-                    }
-                } catch (uploadError) {
-                    console.error('图片上传失败，但链接已更新:', uploadError)
-                    // 图片上传失败不影响整体操作，因为链接数据已经更新成功
-                }
-            }
-
             closeDialog()
             await fetchLinks() // 刷新列表
         } else {
