@@ -40,7 +40,7 @@
                         <i class="expand-icon" :class="{ rotated: openMenus.order }">▶</i>
                     </div>
                     <div class="submenu-container" :class="{ show: openMenus.order }">
-                        <div v-for="item in ['order-pending', 'order-shipping', 'order-success', 'order-refund-apply', 'order-refunded', 'order-cancelled']"
+                        <div v-for="item in ['order-pending-shipment', 'order-shipping', 'order-successful', 'order-return-apply', 'order-returned', 'order-cancelled']"
                             :key="item" class="submenu-item" :class="{ active: activeMenu === item }"
                             @click.stop="selectMenu(item)">
                             {{ menuLabels[item] }}
@@ -112,8 +112,50 @@
 
 
 <script>
+// Import order components
+import OrderPendingShipment from './OrderPendingShipment.vue';
+import OrderShipping from './OrderShipping.vue';
+import OrderSuccessful from './OrderSuccessful.vue';
+import OrderReturnApply from './OrderReturnApply.vue';
+import OrderReturned from './OrderReturned.vue';
+import OrderCancelled from './OrderCancelled.vue';
+
+// Import other components
+import AdminHome from './AdminHome.vue';
+import ProductList from './ProductList.vue';
+import BrandList from './BrandList.vue';
+import TypeList from './TypeList.vue';
+import ColorList from './ColorList.vue';
+import SizeList from './SizeList.vue';
+import UserList from './UserList.vue';
+import ReportPerformance from './ReportPerformance.vue';
+import ReportMarketing from './ReportMarketing.vue';
+import ReportTraffic from './ReportTraffic.vue';
+import LinkManage from './LinkManage.vue';
+import AdManage from './AdManage.vue';
+
 export default {
     name: 'AdminLayout',
+    components: {
+        OrderPendingShipment,
+        OrderShipping,
+        OrderSuccessful,
+        OrderReturnApply,
+        OrderReturned,
+        OrderCancelled,
+        AdminHome,
+        ProductList,
+        BrandList,
+        TypeList,
+        ColorList,
+        SizeList,
+        UserList,
+        ReportPerformance,
+        ReportMarketing,
+        ReportTraffic,
+        LinkManage,
+        AdManage,
+    },
     data() {
         return {
             activeMenu: 'home',
@@ -130,11 +172,11 @@ export default {
                 'type-list': 'Type List',
                 'color-list': 'Color List',
                 'size-list': 'Size List',
-                'order-pending': 'Pending Orders',
+                'order-pending-shipment': 'Pending Shipment Orders',
                 'order-shipping': 'Shipping Orders',
-                'order-success': 'Completed Orders',
-                'order-refund-apply': 'Refund Applications',
-                'order-refunded': 'Refunded Orders',
+                'order-successful': 'Successful Orders',
+                'order-return-apply': 'Return Application Orders',
+                'order-returned': 'Returned Orders',
                 'order-cancelled': 'Cancelled Orders',
                 'user-list': 'User List',
                 'report-performance': 'Performance Report',
@@ -154,11 +196,11 @@ export default {
                 'type-list': 'TypeList',
                 'color-list': 'ColorList',
                 'size-list': 'SizeList',
-                'order-pending': 'OrderPending',
+                'order-pending-shipment': 'OrderPendingShipment',
                 'order-shipping': 'OrderShipping',
-                'order-success': 'OrderSuccess',
-                'order-refund-apply': 'OrderRefundApply',
-                'order-refunded': 'OrderRefunded',
+                'order-successful': 'OrderSuccessful',
+                'order-return-apply': 'OrderReturnApply',
+                'order-returned': 'OrderReturned',
                 'order-cancelled': 'OrderCancelled',
                 'user-list': 'UserList',
                 'report-performance': 'ReportPerformance',
