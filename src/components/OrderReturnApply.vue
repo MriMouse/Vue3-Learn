@@ -248,6 +248,10 @@ onMounted(() => {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
+.order-table th, .order-table td {
+    font-weight: bold;
+}
+
 .order-table {
     width: 100%;
     border-collapse: collapse;
