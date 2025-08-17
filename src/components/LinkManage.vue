@@ -1,4 +1,5 @@
 <template>
+    <BaseToast ref="toast" :message="toastMessage" />
     <div class="link-container">
         <div class="link-header">
             <h2 class="title">
@@ -74,7 +75,7 @@
                 <span>Page {{ currentPage }} of {{ totalPages }}</span>
                 <span class="page-size-control">
                     Items per page:
-                    <input type="number" v-model.number="pageSize" @change="handlePageSizeChange" min="1" max="100"
+                    <input type="number" v-model.number="pageSizeInput" @change="handlePageSizeChange" min="1"
                         class="page-size-input">
                 </span>
             </div>
@@ -144,8 +145,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
+import BaseToast from './BaseToast.vue'
+
+// Toast related
+const toast = ref(null)
+const toastMessage = ref('')
 
 // Reactive data
 const links = ref([])
@@ -164,6 +170,7 @@ const originalLink = ref({})
 const currentPage = ref(1)
 const pageSize = ref(5)
 const totalCount = ref(0)
+const pageSizeInput = ref(pageSize.value)
 
 // New link form data
 const newLink = ref({
@@ -744,10 +751,34 @@ const goToPage = (page) => {
 }
 
 const handlePageSizeChange = () => {
-    currentPage.value = 1 // Reset to first page when changing page size
-    selectedLinks.value = [] // Clear selection
+    const newSize = Number(pageSizeInput.value)
+
+    if (isNaN(newSize) || newSize > 5) {
+        toastMessage.value = 'Cannot be greater than 5'
+        if (toast.value) {
+            toast.value.show()
+        }
+        // Revert the input to the last valid page size
+        pageSizeInput.value = pageSize.value
+        return
+    }
+
+    if (newSize < 1) {
+        pageSizeInput.value = 1
+        pageSize.value = 1
+    } else {
+        pageSize.value = newSize
+    }
+
+    currentPage.value = 1
+    selectedLinks.value = []
     fetchLinks()
 }
+
+// Keep the input in sync with the actual page size
+watch(pageSize, (newValue) => {
+    pageSizeInput.value = newValue
+})
 
 // Lifecycle hook
 onMounted(() => {
