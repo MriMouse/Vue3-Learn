@@ -19,7 +19,7 @@
                             <th class="index-col">No.</th>
                             <th class="id-col">Order ID</th>
                             <th class="id-col">User ID</th>
-                            <th class="id-col">Product ID</th>
+                            <th class="id-col">Address ID</th>
                             <th class="status-col">Status</th>
                             <th class="action-col">Actions</th>
                         </tr>
@@ -33,12 +33,13 @@
                             <td class="index-col">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                             <td class="id-col">{{ order.orderId }}</td>
                             <td class="id-col">{{ order.userId }}</td>
-                            <td class="id-col">{{ order.productId }}</td>
+                            <td class="id-col">{{ order.addressId }}</td>
                             <td class="status-col">
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details">👁️</button>
+                                <button class="action-btn view-btn" title="View Details"
+                                    @click="viewOrderDetails(order.orderId)">👁️</button>
                                 <button class="action-btn complete-btn" title="Mark as Complete">✔️</button>
                             </td>
                         </tr>
@@ -74,12 +75,15 @@
             </div>
         </div>
     </div>
+
+    <OrderDetailModal :isVisible="showDetailModal" :orderId="selectedOrderId" @close="closeDetailModal" />
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import OrderDetailModal from './OrderDetailModal.vue'
 
 // Toast related
 const toast = ref(null)
@@ -90,15 +94,17 @@ const allOrders = ref([])
 const loading = ref(true)
 const error = ref('')
 
+// Modal related
+const showDetailModal = ref(false)
+const selectedOrderId = ref(null)
+
 // Pagination data
 const currentPage = ref(1)
 const pageSize = ref(5)
 const pageSizeInput = ref(pageSize.value)
 
 // Computed property to filter orders with status 2 (Shipping)
-const filteredOrders = computed(() => {
-    return allOrders.value.filter(order => Number(order.status) === 2)
-})
+const filteredOrders = computed(() => allOrders.value.filter(order => Number(order.status) === 2))
 
 // Pagination computed properties
 const totalPages = computed(() => {
@@ -107,8 +113,10 @@ const totalPages = computed(() => {
 })
 
 const pagedOrders = computed(() => {
+    if (!filteredOrders.value.length) return []
     const startIndex = (currentPage.value - 1) * pageSize.value
-    return filteredOrders.value.slice(startIndex, startIndex + pageSize.value)
+    const endIndex = startIndex + pageSize.value
+    return filteredOrders.value.slice(startIndex, endIndex)
 })
 
 const visiblePages = computed(() => {
@@ -141,18 +149,32 @@ const fetchOrders = async () => {
     try {
         const response = await axios.post('/api/order/getAll', {}, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        })
+        });
+
         if (response.data && response.data.code === 200) {
-            allOrders.value = response.data.data || []
+            allOrders.value = (response.data.data || []).map(order => ({
+                ...order,
+                orderId: Number(String(order.orderId).replace('ORD', '')) // 移除"ORD"前缀并转换为数字
+            }));
         } else {
-            throw new Error(response.data?.msg || 'Failed to fetch orders.')
+            throw new Error(response.data?.msg || 'Failed to fetch orders.');
         }
     } catch (err) {
-        console.error('API Error:', err)
-        error.value = err.message || 'Network request failed. Please try again.'
+        console.error('API Error:', err);
+        error.value = err.message || 'Network request failed. Please try again.';
     } finally {
-        loading.value = false
+        loading.value = false;
     }
+};
+
+const viewOrderDetails = (orderId) => {
+    selectedOrderId.value = orderId
+    showDetailModal.value = true
+}
+
+const closeDetailModal = () => {
+    showDetailModal.value = false
+    selectedOrderId.value = null
 }
 
 // Pagination methods
@@ -214,13 +236,13 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 24px;
     padding-bottom: 16px;
-    border-bottom: 2px solid rgb(211, 169, 101);
+    border-bottom: 2px solid #17a2b8;
 }
 
 .title {
     font-size: 2rem;
     font-weight: 600;
-    color: rgb(211, 169, 101);
+    color: #17a2b8;
     margin: 0;
     display: flex;
     align-items: center;
@@ -235,7 +257,7 @@ onMounted(() => {
     font-size: 1.1rem;
     color: #666;
     font-weight: 500;
-    background: rgba(211, 169, 101, 0.1);
+    background: rgba(23, 162, 184, 0.1);
     padding: 8px 16px;
     border-radius: 20px;
 }
@@ -247,7 +269,8 @@ onMounted(() => {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
-.order-table th, .order-table td {
+.order-table th,
+.order-table td {
     font-weight: bold;
 }
 
@@ -258,7 +281,7 @@ onMounted(() => {
 }
 
 .order-table thead tr {
-    background: linear-gradient(135deg, rgb(211, 169, 101), #d4af37);
+    background: linear-gradient(135deg, #17a2b8, #138496);
     color: white;
 }
 
@@ -280,7 +303,7 @@ onMounted(() => {
 }
 
 .order-row:hover {
-    background: rgba(211, 169, 101, 0.05);
+    background: rgba(23, 162, 184, 0.05);
 }
 
 .even-row {
@@ -290,7 +313,7 @@ onMounted(() => {
 .index-col {
     width: 80px;
     font-weight: 600;
-    color: rgb(211, 169, 101);
+    color: #17a2b8;
 }
 
 .id-col {
@@ -387,7 +410,7 @@ onMounted(() => {
 
 .page-size-input:focus {
     outline: none;
-    border-color: rgb(211, 169, 101);
+    border-color: #17a2b8;
 }
 
 .pagination-controls {
@@ -398,8 +421,8 @@ onMounted(() => {
 
 .page-btn {
     background: white;
-    color: rgb(211, 169, 101);
-    border: 1px solid rgb(211, 169, 101);
+    color: #17a2b8;
+    border: 1px solid #17a2b8;
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
@@ -409,7 +432,7 @@ onMounted(() => {
 }
 
 .page-btn:hover:not(:disabled) {
-    background: rgb(211, 169, 101);
+    background: #17a2b8;
     color: white;
 }
 
@@ -427,7 +450,7 @@ onMounted(() => {
 
 .page-number-btn {
     background: white;
-    color: rgb(211, 169, 101);
+    color: #17a2b8;
     border: 1px solid rgb(211, 169, 101);
     padding: 8px 12px;
     border-radius: 6px;
@@ -438,11 +461,11 @@ onMounted(() => {
 }
 
 .page-number-btn:hover {
-    background: rgba(211, 169, 101, 0.1);
+    background: rgba(23, 162, 184, 0.1);
 }
 
 .page-number-btn.active {
-    background: rgb(211, 169, 101);
+    background: #17a2b8;
     color: white;
     font-weight: 600;
 }
@@ -456,7 +479,7 @@ onMounted(() => {
 }
 
 .loading {
-    color: rgb(211, 169, 101);
+    color: #17a2b8;
 }
 
 .error {

@@ -19,7 +19,7 @@
                             <th class="index-col">No.</th>
                             <th class="id-col">Order ID</th>
                             <th class="id-col">User ID</th>
-                            <th class="id-col">Product ID</th>
+                            <th class="id-col">Address ID</th>
                             <th class="status-col">Status</th>
                             <th class="action-col">Actions</th>
                         </tr>
@@ -33,12 +33,13 @@
                             <td class="index-col">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                             <td class="id-col">{{ order.orderId }}</td>
                             <td class="id-col">{{ order.userId }}</td>
-                            <td class="id-col">{{ order.productId }}</td>
+                            <td class="id-col">{{ order.addressId }}</td>
                             <td class="status-col">
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details">👁️</button>
+                                <button class="action-btn view-btn" title="View Details"
+                                    @click="viewOrderDetails(order.orderId)">👁️</button>
                             </td>
                         </tr>
                     </tbody>
@@ -73,12 +74,15 @@
             </div>
         </div>
     </div>
+
+    <OrderDetailModal :isVisible="showDetailModal" :orderId="selectedOrderId" @close="closeDetailModal" />
 </template>
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import OrderDetailModal from './OrderDetailModal.vue'
 
 // Toast related
 const toast = ref(null)
@@ -88,6 +92,10 @@ const toastMessage = ref('')
 const allOrders = ref([])
 const loading = ref(true)
 const error = ref('')
+
+// Modal related
+const showDetailModal = ref(false)
+const selectedOrderId = ref(null)
 
 // Pagination data
 const currentPage = ref(1)
@@ -142,7 +150,11 @@ const fetchOrders = async () => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         })
         if (response.data && response.data.code === 200) {
-            allOrders.value = response.data.data || []
+            // 确保 orderId 是数字类型，并处理可能的非数字前缀
+            allOrders.value = (response.data.data || []).map(order => ({
+                ...order,
+                orderId: Number(String(order.orderId).replace('ORD', '')) // 移除"ORD"前缀并转换为数字
+            }))
         } else {
             throw new Error(response.data?.msg || 'Failed to fetch orders.')
         }
@@ -152,6 +164,16 @@ const fetchOrders = async () => {
     } finally {
         loading.value = false
     }
+}
+
+const viewOrderDetails = (orderId) => {
+    selectedOrderId.value = Number(orderId) // Ensure orderId is a number
+    showDetailModal.value = true
+}
+
+const closeDetailModal = () => {
+    showDetailModal.value = false
+    selectedOrderId.value = null
 }
 
 // Pagination methods
@@ -246,7 +268,8 @@ onMounted(() => {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
-.order-table th, .order-table td {
+.order-table th,
+.order-table td {
     font-weight: bold;
 }
 
