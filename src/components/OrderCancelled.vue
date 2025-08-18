@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="order-container">
         <div class="order-header">
             <h2 class="title">
@@ -38,8 +38,10 @@
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details"
+                                <button class="eye-icon-btn" title="View Details"
                                     @click="viewOrderDetails(order.orderId)">👁️</button>
+                                <button class="delete-btn" title="Delete Order"
+                                    @click="deleteOrder(order.orderId)">❌</button>
                             </td>
                         </tr>
                     </tbody>
@@ -87,6 +89,7 @@ import OrderDetailModal from './OrderDetailModal.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const allOrders = ref([])
@@ -210,6 +213,33 @@ const handlePageSizeChange = () => {
 watch(pageSize, (newValue) => {
     pageSizeInput.value = newValue
 })
+
+const deleteOrder = async (orderId) => {
+    try {
+        const params = new URLSearchParams();
+        // 确保 orderId 是数字类型，处理可能的非数字前缀
+        params.append('orderId', Number(String(orderId).replace('ORD', '')));
+
+        // 调用后端 API 删除订单
+        const response = await axios.post('/api/order/deleteOrderAndShoeNum', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = 'Order deleted successfully';
+            toastType.value = 'success'; // 设置为成功类型（绿色样式）
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to delete order');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Failed to delete order, please try again.';
+        toastType.value = 'error'; // 确保错误类型
+        toast.value.show();
+    }
+};
 
 // Lifecycle hook
 onMounted(() => {
@@ -341,13 +371,47 @@ onMounted(() => {
 
 .action-btn {
     border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 1.1rem;
-    margin: 0 4px;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    min-width: 60px;
+}
+
+.eye-icon-btn {
+    color: white;
     background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.eye-icon-btn:hover {
+    transform: scale(1.1);
+    box-shadow: none;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    padding: 4px;
+}
+
+.delete-btn:hover {
+    transform: scale(1.2);
+    color: #c0392b;
 }
 
 .view-btn {

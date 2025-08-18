@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="order-container">
         <div class="order-header">
             <h2 class="title">
@@ -38,9 +38,12 @@
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details"
+                                <button class="eye-icon-btn" title="View Details"
                                     @click="viewOrderDetails(order.orderId)">👁️</button>
-                                <button class="action-btn complete-btn" title="Mark as Complete">✔️</button>
+                                <button class="action-btn complete-btn" title="Mark as Complete"
+                                    @click="markAsComplete(order.orderId)">Complete</button>
+                                <button class="action-btn pending-btn" title="Mark as Pending"
+                                    @click="markAsPending(order.orderId)">Pending</button>
                             </td>
                         </tr>
                     </tbody>
@@ -88,6 +91,7 @@ import OrderDetailModal from './OrderDetailModal.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const allOrders = ref([])
@@ -176,6 +180,75 @@ const closeDetailModal = () => {
     showDetailModal.value = false
     selectedOrderId.value = null
 }
+
+const markAsComplete = async (orderId) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息
+        const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为3 (Successful)
+        const requestBody = { ...orderToUpdate };
+        requestBody.status = (Number(orderToUpdate.status) + 1).toString(); // 将状态加 1 并转回字符串
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = 'Order marked as complete successfully!';
+            toastType.value = 'success';
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to mark order as complete.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error marking order as complete. Please try again.';
+        toast.value.show();
+    }
+};
+
+const markAsPending = async (orderId) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息
+        const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toast.value.show();
+            return;
+        }
+
+        // 确保状态是Shipping (2) 才能转为Pending
+        if (Number(orderToUpdate.status) !== 2) {
+            toastMessage.value = 'Only shipping orders can be marked as pending.';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为1 (Pending Shipment)
+        const requestBody = { ...orderToUpdate };
+        requestBody.status = (Number(orderToUpdate.status) - 1).toString(); // 将状态减 1 并转回字符串
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = 'Order marked as pending successfully!';
+            toastType.value = 'success';
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to mark order as pending.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error marking order as pending. Please try again.';
+        toast.value.show();
+    }
+};
 
 // Pagination methods
 const goToPage = (page) => {
@@ -287,7 +360,7 @@ onMounted(() => {
 
 .order-table th,
 .order-table td {
-    padding: 16px 12px;
+    padding: 12px 8px;
     text-align: center;
     vertical-align: middle;
 }
@@ -311,56 +384,78 @@ onMounted(() => {
 }
 
 .index-col {
-    width: 80px;
+    width: 60px;
     font-weight: 600;
     color: #17a2b8;
 }
 
 .id-col {
-    width: 250px;
+    width: 180px;
     font-family: 'Courier New', Courier, monospace;
 }
 
 .status-col {
-    width: 180px;
+    width: 130px;
 }
 
 .status-badge {
     display: inline-block;
-    padding: 6px 16px;
-    border-radius: 18px;
+    padding: 4px 12px;
+    border-radius: 16px;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     background: rgba(23, 162, 184, 0.15);
     color: #17a2b8;
     border: 1px solid rgba(23, 162, 184, 0.3);
 }
 
 .action-col {
-    width: 150px;
+    width: 350px;
 }
 
 .action-btn {
     border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 1.1rem;
-    margin: 0 4px;
-    background: none;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    min-width: 60px;
 }
 
-.view-btn {
+.eye-icon-btn {
     color: #17a2b8;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.eye-icon-btn:hover {
+    transform: scale(1.1);
+    box-shadow: none;
 }
 
 .complete-btn {
-    color: #28a745;
+    color: white;
+    background: #28a745;
+}
+
+.pending-btn {
+    color: white;
+    background: #ffc107;
 }
 
 .action-btn:hover {
-    transform: scale(1.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .empty-row {

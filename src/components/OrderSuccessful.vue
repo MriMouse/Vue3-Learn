@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="order-container">
         <div class="order-header">
             <h2 class="title">
@@ -38,9 +38,10 @@
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details"
+                                <button class="eye-icon-btn" title="View Details"
                                     @click="viewOrderDetails(order.orderId)">👁️</button>
-                                <button class="action-btn return-btn" title="Apply for Return">↩️</button>
+                                <button class="action-btn return-btn" title="Apply for Return"
+                                    @click="applyForReturn(order.orderId)">Ship</button>
                             </td>
                         </tr>
                     </tbody>
@@ -88,6 +89,7 @@ import OrderDetailModal from './OrderDetailModal.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error')
 
 // Reactive data
 const allOrders = ref([])
@@ -133,6 +135,7 @@ const visiblePages = computed(() => {
 // Methods
 const statusText = (status) => {
     const map = {
+        '-1': 'Return Requested',
         1: 'Pending Shipment',
         2: 'Shipping',
         3: 'Successful',
@@ -171,6 +174,45 @@ const viewOrderDetails = (orderId) => {
 const closeDetailModal = () => {
     showDetailModal.value = false
     selectedOrderId.value = null
+}
+
+const applyForReturn = async (orderId) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息
+        const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toast.value.show();
+            return;
+        }
+
+        // 确保状态是Successful (3) 才能申请退货
+        if (Number(orderToUpdate.status) !== 3) {
+            toastMessage.value = 'Only successful orders can apply for return.';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为-1 (Return Requested)
+        // 构建请求体，将状态设置为1 (Pending Shipment)
+        const requestBody = { ...orderToUpdate };
+        requestBody.status = (Number(orderToUpdate.status) - 1).toString(); // 将状态减 1 并转回字符串
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = 'Order marked as pending successfully!';
+            toastType.value = 'success'; // 设置为绿色toast
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to apply for return.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error applying for return. Please try again.';
+        toast.value.show();
+    }
 }
 
 // Pagination methods
@@ -338,21 +380,42 @@ onMounted(() => {
 
 .action-btn {
     border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 1.1rem;
-    margin: 0 4px;
-    background: none;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    min-width: 60px;
 }
 
-.view-btn {
+.eye-icon-btn {
     color: #17a2b8;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.eye-icon-btn:hover {
+    transform: scale(1.1);
+    box-shadow: none;
 }
 
 .return-btn {
-    color: #ffc107;
+    background: #17a2b8;
+    color: white;
+}
+
+.return-btn:hover {
+    background: #d35400;
+    color: white;
 }
 
 .action-btn:hover {

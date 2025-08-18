@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="order-container">
         <div class="order-header">
             <h2 class="title">
@@ -38,9 +38,10 @@
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details"
+                                <button class="eye-icon-btn" title="View Details"
                                     @click="viewOrderDetails(order.orderId)">👁️</button>
-                                <button class="action-btn ship-btn" title="Mark as Shipped">🚚</button>
+                                <button class="action-btn ship-btn" title="Mark as Shipped"
+                                    @click="markAsShipped(order.orderId)">Ship</button>
                             </td>
                         </tr>
                     </tbody>
@@ -89,6 +90,7 @@ import OrderDetailModal from './OrderDetailModal.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const allOrders = ref([]) // Reverted to allOrders to hold all data
@@ -177,6 +179,37 @@ const closeDetailModal = () => {
     showDetailModal.value = false
     selectedOrderId.value = null
 }
+
+const markAsShipped = async (orderId) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息，特别是 sizeId
+        const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为2 (Shipping)
+        const requestBody = { ...orderToUpdate };
+        requestBody.status = (Number(orderToUpdate.status) + 1).toString(); // 将状态加 1 并转回字符串
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = 'Order marked as shipped successfully!';
+            toastType.value = 'success';
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to mark order as shipped.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error marking order as shipped. Please try again.';
+        toast.value.show();
+    }
+};
 
 // Pagination methods
 const goToPage = (page) => {
@@ -343,21 +376,42 @@ onMounted(() => {
 
 .action-btn {
     border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 1.1rem;
-    margin: 0 4px;
-    background: none;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    min-width: 60px;
 }
 
-.view-btn {
+.eye-icon-btn {
+    background: none;
+    border: none;
     color: #17a2b8;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+}
+
+.eye-icon-btn:hover {
+    background: rgba(23, 162, 184, 0.1);
+    transform: scale(1.1);
 }
 
 .ship-btn {
-    color: #28a745;
+    background: #17a2b8;
+    color: white;
+}
+
+.ship-btn:hover {
+    background: #138496;
 }
 
 .action-btn:hover {

@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="order-container">
         <div class="order-header">
             <h2 class="title">
@@ -38,10 +38,12 @@
                                 <span class="status-badge">{{ statusText(order.status) }}</span>
                             </td>
                             <td class="action-col">
-                                <button class="action-btn view-btn" title="View Details"
+                                <button class="eye-icon-btn" title="View Details"
                                     @click="viewOrderDetails(order.orderId)">👁️</button>
-                                <button class="action-btn approve-btn" title="Approve Return">✔️</button>
-                                <button class="action-btn reject-btn" title="Reject Return">❌</button>
+                                <button class="action-btn approve-btn" title="Approve Return"
+                                    @click="approveReturn(order)">Approve</button>
+                                <button class="action-btn reject-btn" title="Reject Return"
+                                    @click="rejectReturn(order)">Reject</button>
                             </td>
                         </tr>
                     </tbody>
@@ -89,6 +91,7 @@ import OrderDetailModal from './OrderDetailModal.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const allOrders = ref([])
@@ -106,7 +109,7 @@ const pageSizeInput = ref(pageSize.value)
 
 // Computed property to filter orders with status 4 (Return Applied)
 const filteredOrders = computed(() => {
-    return allOrders.value.filter(order => Number(order.status) === 4)
+    return allOrders.value.filter(order => Number(order.status) > 10 && Number(order.status) <= 20)
 })
 
 // Pagination computed properties
@@ -133,6 +136,12 @@ const visiblePages = computed(() => {
 
 // Methods
 const statusText = (status) => {
+    const numStatus = Number(status);
+    // 检查状态码是否在10-20之间
+    if (numStatus > 10 && numStatus <= 20) {
+        return 'Return Applied';
+    }
+
     const map = {
         1: 'Pending Shipment',
         2: 'Shipping',
@@ -141,7 +150,7 @@ const statusText = (status) => {
         5: 'Returned',
         6: 'Cancelled'
     }
-    return map[Number(status)] || 'Unknown'
+    return map[numStatus] || 'Unknown'
 }
 
 const fetchOrders = async () => {
@@ -186,6 +195,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error'
         if (toast.value) {
             toast.value.show()
         }
@@ -208,6 +218,72 @@ const handlePageSizeChange = () => {
 watch(pageSize, (newValue) => {
     pageSizeInput.value = newValue
 })
+
+const approveReturn = async (order) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息
+        const orderToUpdate = allOrders.value.find(o => o.orderId === order.orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为5 (Returned)
+        const requestBody = { ...orderToUpdate };
+        requestBody.status = '5';
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = `Order ${order.orderId} approved for return successfully!`;
+            toastType.value = 'success';
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to approve return.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error approving return. Please try again.';
+        toastType.value = 'error';
+        toast.value.show();
+    }
+};
+
+const rejectReturn = async (order) => {
+    try {
+        // 查找对应的订单以获取完整的订单信息
+        const orderToUpdate = allOrders.value.find(o => o.orderId === order.orderId);
+        if (!orderToUpdate) {
+            toastMessage.value = 'Order not found.';
+            toast.value.show();
+            return;
+        }
+
+        // 构建请求体，将状态设置为status-10
+        const requestBody = { ...orderToUpdate };
+        const newStatus = Number(orderToUpdate.status) - 10;
+        requestBody.status = newStatus.toString();
+
+        const response = await axios.post('/api/order/updateOrder', requestBody);
+
+        if (response.data && response.data.code === 200) {
+            toastMessage.value = `Order ${order.orderId} return rejected successfully!`;
+            toastType.value = 'success';
+            toast.value.show();
+            fetchOrders(); // 刷新订单列表
+        } else {
+            throw new Error(response.data?.msg || 'Failed to reject return.');
+        }
+    } catch (err) {
+        console.error('API Error:', err);
+        toastMessage.value = err.message || 'Error rejecting return. Please try again.';
+        toastType.value = 'error';
+        toast.value.show();
+    }
+};
 
 // Lifecycle hook
 onMounted(() => {
@@ -339,25 +415,51 @@ onMounted(() => {
 
 .action-btn {
     border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-size: 1.1rem;
-    margin: 0 4px;
-    background: none;
+    font-size: 0.75rem;
+    margin: 0 2px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    min-width: 60px;
 }
 
-.view-btn {
+.eye-icon-btn {
     color: #17a2b8;
+    background: none;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: transform 0.3s ease;
+}
+
+.eye-icon-btn:hover {
+    transform: scale(1.1);
+    box-shadow: none;
 }
 
 .approve-btn {
-    color: #28a745;
+    background: #27ae60;
+    color: white;
+}
+
+.approve-btn:hover {
+    background: #219a52;
 }
 
 .reject-btn {
-    color: #dc3545;
+    background: #e74c3c;
+    color: white;
+}
+
+.reject-btn:hover {
+    background: #c0392b;
+    color: white;
 }
 
 .action-btn:hover {

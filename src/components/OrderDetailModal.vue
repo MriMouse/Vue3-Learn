@@ -40,8 +40,7 @@
                 </div>
                 <div class="detail-item">
                     <span class="label">Shipping Fee:</span>
-                    <span class="value">¥{{ orderDetail.shippingFee ? orderDetail.shippingFee.toFixed(2) : 'N/A'
-                        }}</span>
+                    <span class="value">¥{{ orderDetail.shippingFee.toFixed(2) }}</span>
                 </div>
                 <div class="detail-item">
                     <span class="label">Delivery Time:</span>
@@ -53,7 +52,7 @@
                 </div>
                 <div class="detail-item">
                     <span class="label">Order Shoe Num:</span>
-                    <span class="value">{{ orderDetail.orderShoeNum || 'N/A' }}</span>
+                    <span class="value">{{ orderDetail.orderShoeNum }}</span>
                 </div>
             </div>
             <div v-else class="no-data">No order details available.</div>
@@ -103,13 +102,28 @@ const fetchOrderDetail = async (id) => {
         const response = await axios.post('/api/order/getById', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
-        console.log('API Response:', response.data);
 
         if (response.data && response.data.code === 200) {
+            console.log('API Response:', response.data);
             orderDetail.value = response.data.data;
         } else {
             throw new Error(response.data?.msg || 'Failed to fetch order details.');
         }
+
+        // 获取订单鞋号信息
+        const response2 = await axios.post('/api/orderShoeNum/getTotalNumByOrderId', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+        if (response2.data && response2.data.code === 200) {
+            // 正确访问ref对象并赋值
+            if (orderDetail.value) {
+                orderDetail.value.orderShoeNum = response2.data.data;
+            }
+        } else {
+            throw new Error(response2.data?.msg || 'Failed to fetch order shoe number.');
+        }
+
+
     } catch (err) {
         console.error('API Error:', err);
         error.value = err.message || 'Network request failed. Please try again.';

@@ -667,18 +667,6 @@ const updateLink = async () => {
         params.append('remark', newLink.value.remark.trim());
         params.append('oldImg', oldImgToDelete);
 
-        // 打印发送的参数
-        console.log('发送的更新参数:', {
-            id: newLink.value.id,
-            name: newLink.value.name.trim(),
-            url: newLink.value.url.trim(),
-            img: imagePath,
-            remark: newLink.value.remark.trim(),
-            oldImg: oldImgToDelete,
-            hasNewImage: !!newLink.value.imageFile,
-            imageAction: oldImgToDelete === 'WSY' ? '未修改图片' : oldImgToDelete ? '删除旧图片' : '新增图片'
-        })
-
         const response = await axios.post('/api/link/updateLink', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
