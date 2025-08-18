@@ -1089,7 +1089,7 @@ const fetchInventory = async (shoeId) => {
         existingInventories.forEach(item => {
             inventoryMap.set(item.sizeId, {
                 sizeId: item.sizeId,
-                size: item.sizeName,
+                size: item.size || item.sizeName, // 使用item.size优先，如果没有则使用item.sizeName
                 stock: item.inventoryNumber,
                 newStock: item.inventoryNumber,
                 hasInventory: true
