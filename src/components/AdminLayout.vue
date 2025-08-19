@@ -270,10 +270,39 @@ export default {
     letter-spacing: 1px;
 }
 
-
 .menu-nav {
     flex: 1;
     padding: 1rem 0;
+    overflow-y: auto;
+    /* 关键：菜单区域可滚动 */
+    max-height: calc(100vh - 140px);
+    /* 预留给header等的高度 */
+    /* 更柔和的滚动条样式 */
+    scrollbar-width: thin;
+    /* Firefox */
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+/* WebKit 浏览器的滚动条定制 */
+.menu-nav::-webkit-scrollbar {
+    width: 8px;
+}
+
+.menu-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.menu-nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    /* 窄边距，避免显得突兀 */
+    background-clip: padding-box;
+}
+
+.menu-nav:hover::-webkit-scrollbar-thumb {
+    background: rgba(211, 169, 101, 0.45);
+    /* 悬停时略显色 */
 }
 
 .menu-section {
@@ -342,7 +371,8 @@ export default {
 }
 
 .submenu-container.show {
-    max-height: 300px;
+    max-height: 600px;
+    /* 更大的展开高度以适配滚动容器 */
 }
 
 .submenu-item {

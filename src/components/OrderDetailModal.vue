@@ -178,7 +178,7 @@ const formatDateTime = (timestamp) => {
     const date = new Date(timestamp);
     // Check if date is valid
     if (isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleString(); // Adjust format as needed
+    return date.toLocaleDateString(); // Adjust format as needed
 };
 
 watch(() => props.orderId, (newOrderId) => {

@@ -1,5 +1,10 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除类型确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Type" message="Are you sure you want to delete this type? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
     <div class="type-container">
         <div class="type-header">
             <h2 class="title">
@@ -47,7 +52,7 @@
                         </td>
                         <td class="remark-col">
                             <span class="type-remark" :title="type.typeRemark">{{ type.typeRemark || 'No remark'
-                                }}</span>
+                            }}</span>
                         </td>
                         <td class="status-col">
                             <label class="switch">
@@ -146,10 +151,15 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const typeToDelete = ref(null)
 
 // Reactive data
 const types = ref([])
@@ -287,27 +297,26 @@ const toggleBatchStatus = async () => {
 
 // Delete single type
 const deleteType = async (typeId, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete this type?`)) {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        typeToDelete.value = typeId
+        showDeleteConfirm.value = true
         return
     }
 
+    // 直接删除（用于程序调用）
     loading.value = true
     error.value = ''
     try {
         const params = new URLSearchParams();
-        params.append('shoesTypeId', typeId);
+        params.append('typeId', typeId);
 
-        console.log('删除鞋型参数:', { shoesTypeId: typeId });
-
-        const response = await axios.post('/api/shoesType/deleteShoesType', params, {
+        const response = await axios.post('/api/shoesType/deleteType', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete type success:', response.data);
-            if (showConfirm) {
-                await fetchTypes() // Refresh the list only for single delete
-            }
+            await fetchTypes()
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }
@@ -315,10 +324,33 @@ const deleteType = async (typeId, showConfirm = true) => {
         console.error('Error deleting type:', error)
         error.value = 'Failed to delete type. Please try again.'
     } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
+        loading.value = false
     }
+}
+
+// 删除确认处理方法
+const handleDeleteConfirm = async () => {
+    if (!typeToDelete.value) return
+
+    try {
+        await deleteType(typeToDelete.value, false)
+        showDeleteConfirm.value = false
+        typeToDelete.value = null
+
+        // Show success message
+        toastMessage.value = 'Type deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除类型失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    typeToDelete.value = null
 }
 
 // Toggle type status

@@ -1,5 +1,11 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除产品确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Product" message="Are you sure you want to delete this product? All related images and inventory information will also be deleted. This operation cannot be undone."
+        confirm-text="Delete" cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm"
+        @cancel="handleDeleteCancel" />
+
     <div class="product-container">
         <div class="product-header">
             <h2 class="title">
@@ -36,7 +42,7 @@
                         <th class="color-col">Color</th>
                         <th class="price-col">Price</th>
                         <th class="discount-col">Discount</th>
-                        <th class="sales-col">Sales</th>
+                        <th class="sales-col">Gender</th>
                         <th class="status-col">Status</th>
                         <th class="inventory-col">Inventory</th>
                         <th class="action-col">Actions</th>
@@ -91,11 +97,12 @@
                         </td>
                         <td class="discount-col">
                             <span class="discount-price" v-if="product.discountPrice">¥{{ product.discountPrice
-                                }}</span>
+                            }}</span>
                             <span v-else class="no-discount">-</span>
                         </td>
                         <td class="sales-col">
-                            <span class="sales-volume">{{ product.salesVolume || 0 }}</span>
+                            <span class="gender-symbol" :title="genderText(product.shoeSex)">{{
+                                genderSymbol(product.shoeSex) }}</span>
                         </td>
                         <td class="status-col">
                             <label class="switch">
@@ -225,14 +232,19 @@
                                 <label for="origin">Origin:</label>
                                 <input type="text" id="origin" v-model="newProduct.origin" class="form-input">
                             </div>
+                            <div class="form-group">
+                                <label for="shoeSex">Gender:</label>
+                                <select id="shoeSex" v-model="newProduct.shoeSex" class="form-input">
+                                    <option value="">Select Gender</option>
+                                    <option :value="1">Male</option>
+                                    <option :value="2">Female</option>
+                                    <option :value="3">Kids</option>
+                                    <option :value="4">Other</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="salesVolume">Sales Volume:</label>
-                                <input type="number" id="salesVolume" v-model="newProduct.salesVolume" min="0"
-                                    class="form-input">
-                            </div>
                             <div class="form-group">
                                 <label for="points">Points:</label>
                                 <input type="number" id="points" v-model="newProduct.points" min="0" class="form-input">
@@ -324,7 +336,7 @@
                                     <div class="size-info">
                                         <span class="size-name">Size {{ sizeInfo.size }}</span>
                                         <span class="size-stock" v-if="sizeInfo.hasInventory">Stock: {{ sizeInfo.stock
-                                            }}</span>
+                                        }}</span>
                                         <span class="size-stock no-stock" v-else>No inventory record</span>
                                     </div>
                                     <div class="inventory-actions" v-if="sizeInfo.hasInventory">
@@ -391,10 +403,15 @@
 import { ref, onMounted, computed, reactive, nextTick, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const productToDelete = ref(null)
 
 // Reactive data
 const products = ref([])
@@ -449,6 +466,7 @@ const newProduct = ref({
     launchDate: '',
     origin: '',
     description: '',
+    shoeSex: '',
     salesVolume: 0,
     points: 0,
     shoeDisabled: false
@@ -498,6 +516,7 @@ const hasChanges = computed(() => {
         newProduct.value.launchDate !== originalProduct.value.launchDate ||
         newProduct.value.origin !== originalProduct.value.origin ||
         newProduct.value.description !== originalProduct.value.description ||
+        newProduct.value.shoeSex !== originalProduct.value.shoeSex ||
         newProduct.value.salesVolume !== originalProduct.value.salesVolume ||
         newProduct.value.points !== originalProduct.value.points ||
         newProduct.value.shoeDisabled !== originalProduct.value.shoeDisabled ||
@@ -636,10 +655,14 @@ const toggleBatchStatus = async () => {
 
 // Delete single product
 const deleteProduct = async (shoeId, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete this product? All associated images will also be deleted.`)) {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        productToDelete.value = shoeId
+        showDeleteConfirm.value = true
         return
     }
 
+    // 直接删除（用于程序调用）
     loading.value = true
     error.value = ''
     try {
@@ -651,9 +674,7 @@ const deleteProduct = async (shoeId, showConfirm = true) => {
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            if (showConfirm) {
-                await fetchProducts()
-            }
+            await fetchProducts()
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }
@@ -661,10 +682,33 @@ const deleteProduct = async (shoeId, showConfirm = true) => {
         console.error('Error deleting product:', error)
         error.value = 'Failed to delete product. Please try again.'
     } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
+        loading.value = false
     }
+}
+
+// 删除确认处理方法
+const handleDeleteConfirm = async () => {
+    if (!productToDelete.value) return
+
+    try {
+        await deleteProduct(productToDelete.value, false)
+        showDeleteConfirm.value = false
+        productToDelete.value = null
+
+        // 显示成功消息
+        toastMessage.value = 'Product deleted successfully!'
+            if (toast.value) {
+                toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除产品失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    productToDelete.value = null
 }
 
 // Toggle product status
@@ -955,6 +999,7 @@ const addProduct = async () => {
         if (newProduct.value.launchDate) params.append('launchDate', newProduct.value.launchDate);
         if (newProduct.value.origin) params.append('origin', newProduct.value.origin.trim());
         if (newProduct.value.description) params.append('description', newProduct.value.description.trim());
+        if (newProduct.value.shoeSex) params.append('shoeSex', newProduct.value.shoeSex);
         params.append('salesVolume', newProduct.value.salesVolume || 0);
         params.append('points', newProduct.value.points || 0);
 
@@ -1029,6 +1074,7 @@ const updateProduct = async () => {
         if (newProduct.value.launchDate) params.append('launchDate', newProduct.value.launchDate);
         if (newProduct.value.origin) params.append('origin', newProduct.value.origin.trim());
         if (newProduct.value.description) params.append('description', newProduct.value.description.trim());
+        if (newProduct.value.shoeSex) params.append('shoeSex', newProduct.value.shoeSex);
         params.append('salesVolume', newProduct.value.salesVolume || 0);
         params.append('points', newProduct.value.points || 0);
         params.append('shoeDisabled', newProduct.value.shoeDisabled);
@@ -1223,6 +1269,20 @@ onMounted(() => {
     fetchProducts()
     fetchOptions()
 })
+
+// Gender render helpers
+const genderText = (val) => {
+    const map = { 1: 'Male', 2: 'Female', 3: 'Kids', 4: 'Other' }
+    return map[Number(val)] || 'Unknown'
+}
+const genderSymbol = (val) => {
+    const n = Number(val)
+    if (n === 1) return '♂'
+    if (n === 2) return '♀'
+    if (n === 3) return '👶'
+    if (n === 4) return '⚧'
+    return '—'
+}
 </script>
 
 <style scoped>
@@ -1404,6 +1464,11 @@ onMounted(() => {
 
 .sales-col {
     width: 80px;
+}
+
+.gender-symbol {
+    font-size: 1.4rem;
+    font-weight: 700;
 }
 
 .status-col {
@@ -1678,8 +1743,48 @@ onMounted(() => {
     width: 90%;
     max-width: 800px;
     max-height: 90vh;
-    overflow-y: auto;
+    overflow: hidden;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-content {
+    padding: 24px;
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+    padding-bottom: 40px;
+}
+
+/* 自定义金色滚动条样式 - 只应用于dialog-content */
+.dialog-content::-webkit-scrollbar {
+    width: 12px;
+}
+
+.dialog-content::-webkit-scrollbar-track {
+    background: rgba(211, 169, 101, 0.1);
+    border-radius: 6px;
+    margin: 4px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgb(211, 169, 101), #d4af37);
+    border-radius: 6px;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+}
+
+.dialog-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #d4af37, rgb(211, 169, 101));
+    box-shadow: 0 2px 8px rgba(211, 169, 101, 0.4);
+}
+
+.dialog-content::-webkit-scrollbar-corner {
+    background: rgba(211, 169, 101, 0.1);
+}
+
+/* Firefox 滚动条样式 - 只应用于dialog-content */
+.dialog-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(211, 169, 101) rgba(211, 169, 101, 0.1);
 }
 
 .inventory-dialog {
@@ -1833,10 +1938,6 @@ onMounted(() => {
 
 .close-btn:hover {
     background: rgba(255, 255, 255, 0.2);
-}
-
-.dialog-content {
-    padding: 24px;
 }
 
 .form-row {

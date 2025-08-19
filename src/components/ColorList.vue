@@ -1,5 +1,10 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除颜色确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Color" message="Are you sure you want to delete this color? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
     <div class="color-container">
         <div class="color-header">
             <h2 class="title">
@@ -165,10 +170,15 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const colorToDelete = ref(null)
 
 // Reactive data
 const colors = ref([])
@@ -329,27 +339,26 @@ const toggleBatchStatus = async () => {
 
 // Delete single color
 const deleteColor = async (colorId, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete this color?`)) {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        colorToDelete.value = colorId
+        showDeleteConfirm.value = true
         return
     }
 
+    // 直接删除（用于程序调用）
     loading.value = true
     error.value = ''
     try {
         const params = new URLSearchParams();
         params.append('colorId', colorId);
 
-        console.log('删除颜色参数:', { colorId: colorId });
-
         const response = await axios.post('/api/color/deleteColor', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete color success:', response.data);
-            if (showConfirm) {
-                await fetchColors() // Refresh the list only for single delete
-            }
+            await fetchColors()
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }
@@ -357,10 +366,33 @@ const deleteColor = async (colorId, showConfirm = true) => {
         console.error('Error deleting color:', error)
         error.value = 'Failed to delete color. Please try again.'
     } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
+        loading.value = false
     }
+}
+
+// 删除确认处理方法
+const handleDeleteConfirm = async () => {
+    if (!colorToDelete.value) return
+
+    try {
+        await deleteColor(colorToDelete.value, false)
+        showDeleteConfirm.value = false
+        colorToDelete.value = null
+
+        // Show success message
+        toastMessage.value = 'Color deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除颜色失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    colorToDelete.value = null
 }
 
 // Toggle color status

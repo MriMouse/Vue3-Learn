@@ -1,5 +1,15 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除链接确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Link" message="Are you sure you want to delete this link? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
+    <!-- 批量删除链接确认对话框 -->
+    <ConfirmDialog v-model:visible="showBatchDeleteConfirm" title="Batch Delete Links"
+        :message="`Are you sure you want to delete the selected ${selectedLinks.value.length} links? This operation cannot be undone.`" confirm-text="Delete" cancel-text="Cancel" icon="🗑️"
+        type="danger" @confirm="handleBatchDeleteConfirm" @cancel="handleBatchDeleteCancel" />
+
     <div class="link-container">
         <div class="link-header">
             <h2 class="title">
@@ -148,6 +158,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue' // Added ConfirmDialog import
 
 // Toast related
 const toast = ref(null)
@@ -264,13 +275,52 @@ const handleSelectAll = () => {
     }
 }
 
-// Batch delete links
-const batchDelete = async () => {
-    if (selectedLinks.value.length === 0) {
+// Delete single link
+const deleteLink = async (linkName, showConfirm = true) => {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        linkToDelete.value = linkName
+        showDeleteConfirm.value = true
         return
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedLinks.value.length} selected links?`)) {
+    // 直接删除（用于程序调用）
+    loading.value = true
+    error.value = ''
+    try {
+        // 找到要删除的链接对象，获取图片信息
+        const linkToDeleteObject = links.value.find(link => link.name === linkName)
+        const imgName = linkToDeleteObject?.img || ''
+        // 从路径中提取文件名（移除开头的 / 符号）
+        const imgPath = imgName.replace(/^\//, '')
+
+        const params = new URLSearchParams();
+        params.append('name', linkName);
+        params.append('imgname', imgPath);
+
+        console.log('删除链接参数:', { name: linkName, imgname: imgPath });
+
+        const response = await axios.post('/api/link/deleteLink', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
+            console.log('Delete link success:', response.data);
+            await fetchLinks() // Refresh the list
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
+        }
+    } catch (error) {
+        console.error('Error deleting link:', error)
+        error.value = 'Failed to delete link. Please try again.'
+    } finally {
+        loading.value = false
+    }
+}
+
+// 批量删除方法
+const batchDelete = async () => {
+    if (selectedLinks.value.length === 0) {
         return
     }
 
@@ -293,47 +343,48 @@ const batchDelete = async () => {
     }
 }
 
-// Delete single link
-const deleteLink = async (linkName, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete the link "${linkName}"?`)) {
-        return
-    }
+// Confirm dialog handlers
+const showDeleteConfirm = ref(false)
+const showBatchDeleteConfirm = ref(false)
+const linkToDelete = ref('')
 
-    loading.value = true
-    error.value = ''
+const handleDeleteConfirm = async () => {
+    if (!linkToDelete.value) return
+
     try {
-        // 找到要删除的链接对象，获取图片信息
-        const linkToDelete = links.value.find(link => link.name === linkName)
-        const imgName = linkToDelete?.img || ''
-        // 从路径中提取文件名（移除开头的 / 符号）
-        const imgPath = imgName.replace(/^\//, '')
+        await deleteLink(linkToDelete.value, false)
+        showDeleteConfirm.value = false
+        linkToDelete.value = ''
 
-        const params = new URLSearchParams();
-        params.append('name', linkName);
-        params.append('imgname', imgPath);
-
-        console.log('删除链接参数:', { name: linkName, imgname: imgPath });
-
-        const response = await axios.post('/api/link/deleteLink', params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete link success:', response.data);
-            if (showConfirm) {
-                await fetchLinks() // Refresh the list only for single delete
-            }
-        } else {
-            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
+        // Show success message
+        toastMessage.value = 'Link deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
         }
     } catch (error) {
-        console.error('Error deleting link:', error)
-        error.value = 'Failed to delete link. Please try again.'
-    } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
+        console.error('删除失败:', error)
+        error.value = '删除链接失败，请重试。'
     }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    linkToDelete.value = ''
+}
+
+const handleBatchDeleteConfirm = async () => {
+    showBatchDeleteConfirm.value = false
+    await batchDelete()
+
+    // Show success message
+        toastMessage.value = 'Batch delete links successful!'
+        if (toast.value) {
+            toast.value.show()
+        }
+}
+
+const handleBatchDeleteCancel = () => {
+    showBatchDeleteConfirm.value = false
 }
 
 // Show add dialog

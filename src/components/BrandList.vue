@@ -1,5 +1,10 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除品牌确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Brand" message="Are you sure you want to delete this brand? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
     <div class="brand-container">
         <div class="brand-header">
             <h2 class="title">
@@ -48,7 +53,7 @@
                         </td>
                         <td class="remark-col">
                             <span class="brand-remark" :title="brand.brandRemark">{{ brand.brandRemark || 'No remark'
-                            }}</span>
+                                }}</span>
                         </td>
                         <td class="status-col">
                             <label class="switch">
@@ -147,10 +152,15 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const brandToDelete = ref(null)
 
 // Reactive data
 const brands = ref([])
@@ -288,27 +298,26 @@ const toggleBatchStatus = async () => {
 
 // Delete single brand
 const deleteBrand = async (brandId, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete this brand?`)) {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        brandToDelete.value = brandId
+        showDeleteConfirm.value = true
         return
     }
 
+    // 直接删除（用于程序调用）
     loading.value = true
     error.value = ''
     try {
         const params = new URLSearchParams();
         params.append('brandId', brandId);
 
-        console.log('删除品牌参数:', { brandId: brandId });
-
         const response = await axios.post('/api/brand/deleteBrand', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete brand success:', response.data);
-            if (showConfirm) {
-                await fetchBrands() // Refresh the list only for single delete
-            }
+            await fetchBrands()
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }
@@ -316,10 +325,33 @@ const deleteBrand = async (brandId, showConfirm = true) => {
         console.error('Error deleting brand:', error)
         error.value = 'Failed to delete brand. Please try again.'
     } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
+        loading.value = false
     }
+}
+
+// 删除确认处理方法
+const handleDeleteConfirm = async () => {
+    if (!brandToDelete.value) return
+
+    try {
+        await deleteBrand(brandToDelete.value, false)
+        showDeleteConfirm.value = false
+        brandToDelete.value = null
+
+        // Show success message
+        toastMessage.value = 'Brand deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除品牌失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    brandToDelete.value = null
 }
 
 // Toggle brand status

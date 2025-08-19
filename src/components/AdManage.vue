@@ -1,5 +1,15 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除广告确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Advertisement" message="Are you sure you want to delete this advertisement? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
+    <!-- 批量删除广告确认对话框 -->
+    <ConfirmDialog v-model:visible="showBatchDeleteConfirm" title="Batch Delete Advertisements"
+        :message="`Are you sure you want to delete the selected ${selectedAds.value.length} advertisements? This operation cannot be undone.`" confirm-text="Delete" cancel-text="Cancel" icon="🗑️"
+        type="danger" @confirm="handleBatchDeleteConfirm" @cancel="handleBatchDeleteCancel" />
+
     <div class="ad-container">
         <div class="ad-header">
             <h2 class="title">
@@ -157,6 +167,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue' // Added ConfirmDialog import
 
 // Toast related
 const toast = ref(null)
@@ -275,13 +286,52 @@ const handleSelectAll = () => {
     }
 }
 
-// Batch delete ads
-const batchDelete = async () => {
-    if (selectedAds.value.length === 0) {
+// Delete single ad
+const deleteAd = async (companyName, showConfirm = true) => {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        adToDelete.value = companyName
+        showDeleteConfirm.value = true
         return
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedAds.value.length} selected advertisements?`)) {
+    // 直接删除（用于程序调用）
+    loading.value = true
+    error.value = ''
+    try {
+        // 找到要删除的广告对象，获取图片信息
+        const adToDeleteObj = ads.value.find(ad => ad.companyName === companyName)
+        const imgName = adToDeleteObj?.img || ''
+        // 从路径中提取文件名（移除开头的 / 符号）
+        const imgPath = imgName.replace(/^\//, '')
+
+        const params = new URLSearchParams();
+        params.append('companyName', companyName);
+        params.append('imgname', imgPath);
+
+        console.log('删除广告参数:', { companyName: companyName, imgname: imgPath });
+
+        const response = await axios.post('/api/ad/deleteAdvertisement', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        });
+
+        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
+            console.log('Delete ad success:', response.data);
+            await fetchAds() // Refresh the list
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
+        }
+    } catch (error) {
+        console.error('Error deleting ad:', error)
+        error.value = 'Failed to delete advertisement. Please try again.'
+    } finally {
+        loading.value = false
+    }
+}
+
+// 批量删除方法
+const batchDelete = async () => {
+    if (selectedAds.value.length === 0) {
         return
     }
 
@@ -301,49 +351,6 @@ const batchDelete = async () => {
         error.value = 'Failed to delete advertisements. Please try again.'
     } finally {
         loading.value = false
-    }
-}
-
-// Delete single ad
-const deleteAd = async (companyName, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete the advertisement for "${companyName}"?`)) {
-        return
-    }
-
-    loading.value = true
-    error.value = ''
-    try {
-        // 找到要删除的广告对象，获取图片信息
-        const adToDelete = ads.value.find(ad => ad.companyName === companyName)
-        const imgName = adToDelete?.img || ''
-        // 从路径中提取文件名（移除开头的 / 符号）
-        const imgPath = imgName.replace(/^\//, '')
-
-        const params = new URLSearchParams();
-        params.append('companyName', companyName);
-        params.append('imgname', imgPath);
-
-        console.log('删除广告参数:', { companyName: companyName, imgname: imgPath });
-
-        const response = await axios.post('/api/ad/deleteAdvertisement', params, {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
-
-        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete ad success:', response.data);
-            if (showConfirm) {
-                await fetchAds() // Refresh the list only for single delete
-            }
-        } else {
-            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
-        }
-    } catch (error) {
-        console.error('Error deleting ad:', error)
-        error.value = 'Failed to delete advertisement. Please try again.'
-    } finally {
-        if (showConfirm) {
-            loading.value = false
-        }
     }
 }
 
@@ -864,6 +871,51 @@ const handlePageSizeChange = () => {
 watch(pageSize, (newValue) => {
     pageSizeInput.value = newValue
 })
+
+// Confirm Dialog state
+const showDeleteConfirm = ref(false)
+const showBatchDeleteConfirm = ref(false)
+const adToDelete = ref(null)
+
+// Confirm Dialog handlers
+const handleDeleteConfirm = async () => {
+    if (!adToDelete.value) return
+
+    try {
+        await deleteAd(adToDelete.value, false)
+        showDeleteConfirm.value = false
+        adToDelete.value = null
+
+        // Show success message
+        toastMessage.value = 'Advertisement deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除广告失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    adToDelete.value = null
+}
+
+const handleBatchDeleteConfirm = async () => {
+    showBatchDeleteConfirm.value = false
+    await batchDelete()
+
+    // Show success message
+    toastMessage.value = 'Batch delete advertisements successful!'
+    if (toast.value) {
+        toast.value.show()
+    }
+}
+
+const handleBatchDeleteCancel = () => {
+    showBatchDeleteConfirm.value = false
+}
 
 // Lifecycle hook
 onMounted(() => {

@@ -1,5 +1,10 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" />
+
+    <!-- 删除尺寸确认对话框 -->
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Size" message="Are you sure you want to delete this size? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+
     <div class="size-container">
         <div class="size-header">
             <h2 class="title">
@@ -47,7 +52,7 @@
                         </td>
                         <td class="remark-col">
                             <span class="size-remark" :title="size.sizeRemark">{{ size.sizeRemark || 'No remark'
-                            }}</span>
+                                }}</span>
                         </td>
                         <td class="status-col">
                             <label class="switch">
@@ -146,10 +151,15 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const sizeToDelete = ref(null)
 
 // Reactive data
 const sizes = ref([])
@@ -176,6 +186,8 @@ const newSize = ref({
     sizeRemark: '',
     sizeDisabled: 0
 })
+
+// Confirm dialog state
 
 // Computed property for select all checkbox
 const selectAll = computed({
@@ -287,37 +299,44 @@ const toggleBatchStatus = async () => {
 
 // Delete single size
 const deleteSize = async (sizeId, showConfirm = true) => {
-    if (showConfirm && !confirm(`Are you sure you want to delete this size?`)) {
+    if (showConfirm) {
+        // 显示删除确认对话框
+        sizeToDelete.value = sizeId
+        showDeleteConfirm.value = true
         return
     }
 
+    // 直接删除（用于程序调用）
     loading.value = true
     error.value = ''
     try {
         const params = new URLSearchParams();
         params.append('sizeId', sizeId);
 
-        console.log('Delete size params:', { sizeId: sizeId });
-
-        const response = await axios.post('/api/shoesSize/deleteShoesSize', params, {
+        const response = await axios.post('/api/shoesSize/deleteSize', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
-            console.log('Delete size success:', response.data);
-            if (showConfirm) {
-                await fetchSizes() // Refresh the list only for single delete
-            }
+            await fetchSizes()
+            // Show success message
+        toastMessage.value = 'Size deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }
     } catch (error) {
-        console.error('Error deleting size:', error)
-        error.value = 'Failed to delete size. Please try again.'
-    } finally {
-        if (showConfirm) {
-            loading.value = false
+        console.error('删除尺寸失败:', error)
+        error.value = error.message || '删除失败'
+        // 显示错误消息
+        toastMessage.value = 'Deletion failed: ' + error.message
+                if (toast.value) {
+                    toast.value.show()
         }
+    } finally {
+        loading.value = false
     }
 }
 
@@ -569,6 +588,32 @@ watch(pageSize, (newValue) => {
 onMounted(() => {
     fetchSizes()
 })
+
+// Confirm dialog handlers
+const handleDeleteConfirm = async () => {
+    if (!sizeToDelete.value) return
+
+    try {
+        await deleteSize(sizeToDelete.value, false)
+        showDeleteConfirm.value = false
+        sizeToDelete.value = null
+
+        // Show success message
+        toastMessage.value = 'Size deleted successfully!'
+        if (toast.value) {
+            toast.value.show()
+        }
+    } catch (error) {
+        console.error('删除失败:', error)
+        error.value = '删除尺寸失败，请重试。'
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    sizeToDelete.value = null
+}
+
 </script>
 
 <style scoped>
