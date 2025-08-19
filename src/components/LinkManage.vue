@@ -1,14 +1,16 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除链接确认对话框 -->
-    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Link" message="Are you sure you want to delete this link? This operation cannot be undone." confirm-text="Delete"
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Link"
+        message="Are you sure you want to delete this link? This operation cannot be undone." confirm-text="Delete"
         cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
 
     <!-- 批量删除链接确认对话框 -->
     <ConfirmDialog v-model:visible="showBatchDeleteConfirm" title="Batch Delete Links"
-        :message="`Are you sure you want to delete the selected ${selectedLinks.value.length} links? This operation cannot be undone.`" confirm-text="Delete" cancel-text="Cancel" icon="🗑️"
-        type="danger" @confirm="handleBatchDeleteConfirm" @cancel="handleBatchDeleteCancel" />
+        :message="`Are you sure you want to delete the selected ${selectedLinks.length} links? This operation cannot be undone.`"
+        confirm-text="Delete" cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleBatchDeleteConfirm"
+        @cancel="handleBatchDeleteCancel" />
 
     <div class="link-container">
         <div class="link-header">
@@ -163,6 +165,7 @@ import ConfirmDialog from './ConfirmDialog.vue' // Added ConfirmDialog import
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const links = ref([])
@@ -358,6 +361,7 @@ const handleDeleteConfirm = async () => {
 
         // Show success message
         toastMessage.value = 'Link deleted successfully!'
+        toastType.value = 'success';
         if (toast.value) {
             toast.value.show()
         }
@@ -377,10 +381,11 @@ const handleBatchDeleteConfirm = async () => {
     await batchDelete()
 
     // Show success message
-        toastMessage.value = 'Batch delete links successful!'
-        if (toast.value) {
-            toast.value.show()
-        }
+    toastMessage.value = 'Batch delete links successful!'
+    toastType.value = 'success';
+    if (toast.value) {
+        toast.value.show()
+    }
 }
 
 const handleBatchDeleteCancel = () => {
@@ -794,6 +799,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }

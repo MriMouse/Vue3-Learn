@@ -258,6 +258,7 @@ const rejectReturn = async (order) => {
         const orderToUpdate = allOrders.value.find(o => o.orderId === order.orderId);
         if (!orderToUpdate) {
             toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }

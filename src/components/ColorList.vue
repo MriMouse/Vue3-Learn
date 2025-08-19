@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除颜色确认对话框 -->
     <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Color" message="Are you sure you want to delete this color? This operation cannot be undone." confirm-text="Delete"
@@ -175,6 +175,7 @@ import ConfirmDialog from './ConfirmDialog.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // 删除确认相关状态
 const showDeleteConfirm = ref(false)
@@ -381,8 +382,9 @@ const handleDeleteConfirm = async () => {
 
         // Show success message
         toastMessage.value = 'Color deleted successfully!'
-        if (toast.value) {
-            toast.value.show()
+            toastType.value = 'success';
+            if (toast.value) {
+                toast.value.show()
         }
     } catch (error) {
         console.error('删除失败:', error)
@@ -620,8 +622,9 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
-        if (toast.value) {
-            toast.value.show()
+            toastType.value = 'error';
+            if (toast.value) {
+                toast.value.show()
         }
         // Revert the input to the last valid page size
         pageSizeInput.value = pageSize.value

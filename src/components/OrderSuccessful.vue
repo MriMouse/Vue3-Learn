@@ -182,6 +182,7 @@ const applyForReturn = async (orderId) => {
         const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
         if (!orderToUpdate) {
             toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -189,6 +190,7 @@ const applyForReturn = async (orderId) => {
         // 确保状态是Successful (3) 才能申请退货
         if (Number(orderToUpdate.status) !== 3) {
             toastMessage.value = 'Only successful orders can apply for return.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -211,6 +213,7 @@ const applyForReturn = async (orderId) => {
     } catch (err) {
         console.error('API Error:', err);
         toastMessage.value = err.message || 'Error applying for return. Please try again.';
+        toastType.value = 'error';
         toast.value.show();
     }
 }
@@ -227,6 +230,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }

@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
     <div class="user-container">
         <div class="user-header">
             <h2 class="title">
@@ -110,6 +110,7 @@ import BaseToast from './BaseToast.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // Reactive data
 const users = ref([])
@@ -257,6 +258,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }

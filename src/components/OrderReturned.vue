@@ -187,6 +187,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }
@@ -222,7 +223,7 @@ const deleteOrder = async (orderId) => {
 
         if (response.data && response.data.code === 200) {
             toastMessage.value = 'Order deleted successfully';
-            toastType.value = 'success'; // 设置为成功类型（绿色样式）
+            toastType.value = 'success';
             toast.value.show();
             fetchOrders(); // 刷新订单列表
         } else {

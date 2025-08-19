@@ -2,13 +2,16 @@
     <BaseToast ref="toast" :message="toastMessage" />
 
     <!-- 删除广告确认对话框 -->
-    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Advertisement" message="Are you sure you want to delete this advertisement? This operation cannot be undone." confirm-text="Delete"
-        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Advertisement"
+        message="Are you sure you want to delete this advertisement? This operation cannot be undone."
+        confirm-text="Delete" cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm"
+        @cancel="handleDeleteCancel" />
 
     <!-- 批量删除广告确认对话框 -->
     <ConfirmDialog v-model:visible="showBatchDeleteConfirm" title="Batch Delete Advertisements"
-        :message="`Are you sure you want to delete the selected ${selectedAds.value.length} advertisements? This operation cannot be undone.`" confirm-text="Delete" cancel-text="Cancel" icon="🗑️"
-        type="danger" @confirm="handleBatchDeleteConfirm" @cancel="handleBatchDeleteCancel" />
+        :message="`Are you sure you want to delete the selected ${selectedAds.length} advertisements? This operation cannot be undone.`"
+        confirm-text="Delete" cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleBatchDeleteConfirm"
+        @cancel="handleBatchDeleteCancel" />
 
     <div class="ad-container">
         <div class="ad-header">
@@ -172,6 +175,7 @@ import ConfirmDialog from './ConfirmDialog.vue' // Added ConfirmDialog import
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('') // Added toastType
 
 // Reactive data
 const ads = ref([])
@@ -847,6 +851,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }
@@ -888,6 +893,7 @@ const handleDeleteConfirm = async () => {
 
         // Show success message
         toastMessage.value = 'Advertisement deleted successfully!'
+        toastType.value = 'success';
         if (toast.value) {
             toast.value.show()
         }
@@ -908,8 +914,9 @@ const handleBatchDeleteConfirm = async () => {
 
     // Show success message
     toastMessage.value = 'Batch delete advertisements successful!'
+    toastType.value = 'success';
     if (toast.value) {
-        toast.value.show()
+        toast.value.show();
     }
 }
 

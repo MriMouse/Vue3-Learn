@@ -1,5 +1,5 @@
 <template>
-    <BaseToast ref="toast" :message="toastMessage" />
+    <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除尺寸确认对话框 -->
     <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Size" message="Are you sure you want to delete this size? This operation cannot be undone." confirm-text="Delete"
@@ -156,6 +156,7 @@ import ConfirmDialog from './ConfirmDialog.vue'
 // Toast related
 const toast = ref(null)
 const toastMessage = ref('')
+const toastType = ref('error') // Default type
 
 // 删除确认相关状态
 const showDeleteConfirm = ref(false)
@@ -321,6 +322,7 @@ const deleteSize = async (sizeId, showConfirm = true) => {
             await fetchSizes()
             // Show success message
         toastMessage.value = 'Size deleted successfully!'
+        toastType.value = 'success';
         if (toast.value) {
             toast.value.show()
         }
@@ -332,8 +334,9 @@ const deleteSize = async (sizeId, showConfirm = true) => {
         error.value = error.message || '删除失败'
         // 显示错误消息
         toastMessage.value = 'Deletion failed: ' + error.message
-                if (toast.value) {
-                    toast.value.show()
+        toastType.value = 'error';
+        if (toast.value) {
+            toast.value.show()
         }
     } finally {
         loading.value = false
@@ -559,6 +562,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }
@@ -600,6 +604,7 @@ const handleDeleteConfirm = async () => {
 
         // Show success message
         toastMessage.value = 'Size deleted successfully!'
+        toastType.value = 'success';
         if (toast.value) {
             toast.value.show()
         }

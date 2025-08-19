@@ -190,26 +190,26 @@ export default {
     computed: {
         currentComponent() {
             const map = {
-                'home': 'AdminHome',
-                'product-list': 'ProductList',
-                'brand-list': 'BrandList',
-                'type-list': 'TypeList',
-                'color-list': 'ColorList',
-                'size-list': 'SizeList',
-                'order-pending-shipment': 'OrderPendingShipment',
-                'order-shipping': 'OrderShipping',
-                'order-successful': 'OrderSuccessful',
-                'order-return-apply': 'OrderReturnApply',
-                'order-returned': 'OrderReturned',
-                'order-cancelled': 'OrderCancelled',
-                'user-list': 'UserList',
-                'report-performance': 'ReportPerformance',
-                'report-marketing': 'ReportMarketing',
-                'report-traffic': 'ReportTraffic',
-                'link-manage': 'LinkManage',
-                'ad-manage': 'AdManage',
+                'home': AdminHome,
+                'product-list': ProductList,
+                'brand-list': BrandList,
+                'type-list': TypeList,
+                'color-list': ColorList,
+                'size-list': SizeList,
+                'order-pending-shipment': OrderPendingShipment,
+                'order-shipping': OrderShipping,
+                'order-successful': OrderSuccessful,
+                'order-return-apply': OrderReturnApply,
+                'order-returned': OrderReturned,
+                'order-cancelled': OrderCancelled,
+                'user-list': UserList,
+                'report-performance': ReportPerformance,
+                'report-marketing': ReportMarketing,
+                'report-traffic': ReportTraffic,
+                'link-manage': LinkManage,
+                'ad-manage': AdManage,
             };
-            return map[this.activeMenu] || 'AdminHome';
+            return map[this.activeMenu] || AdminHome;
         }
     },
     methods: {

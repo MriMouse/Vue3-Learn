@@ -154,6 +154,7 @@ const renderChart = () => {
                     type: 'pie',
                     radius: '65%',
                     data: names.map((n, idx) => ({ name: n, value: values[idx] })),
+                    label: { show: true, formatter: '{d}%' },
                     emphasis: {
                         itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0, 0, 0, 0.5)' }
                     }
@@ -167,7 +168,7 @@ const renderChart = () => {
             xAxis: { type: 'category', data: names, axisLabel: { rotate: 20 } },
             yAxis: { type: 'value', name: 'Sales' },
             series: [
-                { name: 'Sales', type: 'bar', data: values, itemStyle: { color: '#d4af37' } }
+                { name: 'Sales', type: 'bar', data: values, itemStyle: { color: '#d4af37' }, label: { show: true, position: 'top', formatter: '{c}' } }
             ]
         }
     }

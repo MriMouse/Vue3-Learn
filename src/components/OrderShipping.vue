@@ -187,6 +187,7 @@ const markAsComplete = async (orderId) => {
         const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
         if (!orderToUpdate) {
             toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -218,6 +219,7 @@ const markAsPending = async (orderId) => {
         const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
         if (!orderToUpdate) {
             toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -225,6 +227,7 @@ const markAsPending = async (orderId) => {
         // 确保状态是Shipping (2) 才能转为Pending
         if (Number(orderToUpdate.status) !== 2) {
             toastMessage.value = 'Only shipping orders can be marked as pending.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -262,8 +265,9 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
-        if (toast.value) {
-            toast.value.show()
+            toastType.value = 'error';
+            if (toast.value) {
+                toast.value.show()
         }
         // Revert the input to the last valid page size
         pageSizeInput.value = pageSize.value

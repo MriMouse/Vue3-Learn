@@ -186,6 +186,7 @@ const markAsShipped = async (orderId) => {
         const orderToUpdate = allOrders.value.find(order => order.orderId === orderId);
         if (!orderToUpdate) {
             toastMessage.value = 'Order not found.';
+            toastType.value = 'error';
             toast.value.show();
             return;
         }
@@ -223,6 +224,7 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
+        toastType.value = 'error';
         if (toast.value) {
             toast.value.show()
         }
