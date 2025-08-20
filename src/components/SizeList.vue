@@ -2,7 +2,8 @@
     <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除尺寸确认对话框 -->
-    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Size" message="Are you sure you want to delete this size? This operation cannot be undone." confirm-text="Delete"
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Size"
+        message="Are you sure you want to delete this size? This operation cannot be undone." confirm-text="Delete"
         cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
 
     <div class="size-container">
@@ -314,18 +315,18 @@ const deleteSize = async (sizeId, showConfirm = true) => {
         const params = new URLSearchParams();
         params.append('sizeId', sizeId);
 
-        const response = await axios.post('/api/shoesSize/deleteSize', params, {
+        const response = await axios.post('/api/shoesSize/deleteShoesSize', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
         if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
             await fetchSizes()
             // Show success message
-        toastMessage.value = 'Size deleted successfully!'
-        toastType.value = 'success';
-        if (toast.value) {
-            toast.value.show()
-        }
+            toastMessage.value = 'Size deleted successfully!'
+            toastType.value = 'success';
+            if (toast.value) {
+                toast.value.show()
+            }
         } else {
             throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
         }

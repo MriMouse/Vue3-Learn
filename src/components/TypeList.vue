@@ -2,7 +2,8 @@
     <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除类型确认对话框 -->
-    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Type" message="Are you sure you want to delete this type? This operation cannot be undone." confirm-text="Delete"
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Type"
+        message="Are you sure you want to delete this type? This operation cannot be undone." confirm-text="Delete"
         cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
 
     <div class="type-container">
@@ -52,7 +53,7 @@
                         </td>
                         <td class="remark-col">
                             <span class="type-remark" :title="type.typeRemark">{{ type.typeRemark || 'No remark'
-                            }}</span>
+                                }}</span>
                         </td>
                         <td class="status-col">
                             <label class="switch">
@@ -310,9 +311,9 @@ const deleteType = async (typeId, showConfirm = true) => {
     error.value = ''
     try {
         const params = new URLSearchParams();
-        params.append('typeId', typeId);
+        params.append('shoesTypeId', typeId);
 
-        const response = await axios.post('/api/shoesType/deleteType', params, {
+        const response = await axios.post('/api/shoesType/deleteShoesType', params, {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
         });
 
@@ -340,9 +341,9 @@ const handleDeleteConfirm = async () => {
 
         // Show success message
         toastMessage.value = 'Type deleted successfully!'
-            toastType.value = 'success';
-            if (toast.value) {
-                toast.value.show()
+        toastType.value = 'success';
+        if (toast.value) {
+            toast.value.show()
         }
     } catch (error) {
         console.error('删除失败:', error)
@@ -574,9 +575,9 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
-            toastType.value = 'error';
-            if (toast.value) {
-                toast.value.show()
+        toastType.value = 'error';
+        if (toast.value) {
+            toast.value.show()
         }
         // Revert the input to the last valid page size
         pageSizeInput.value = pageSize.value
