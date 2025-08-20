@@ -18,6 +18,7 @@
                         <tr>
                             <th class="index-col">No.</th>
                             <th class="id-col">Order ID</th>
+                            <th class="id-col">Order Number</th>
                             <th class="id-col">User ID</th>
                             <th class="id-col">Address ID</th>
                             <th class="status-col">Status</th>
@@ -26,12 +27,13 @@
                     </thead>
                     <tbody>
                         <tr v-if="pagedOrders.length === 0">
-                            <td colspan="6" class="empty-row">No shipping orders found.</td>
+                            <td colspan="7" class="empty-row">No shipping orders found.</td>
                         </tr>
                         <tr v-for="(order, index) in pagedOrders" :key="order.orderId" class="order-row"
                             :class="{ 'even-row': index % 2 === 1 }">
                             <td class="index-col">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                             <td class="id-col">{{ order.orderId }}</td>
+                            <td class="id-col">{{ order.orderNumber || order.orderId }}</td>
                             <td class="id-col">{{ order.userId }}</td>
                             <td class="id-col">{{ order.addressId }}</td>
                             <td class="status-col">
@@ -265,9 +267,9 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
-            toastType.value = 'error';
-            if (toast.value) {
-                toast.value.show()
+        toastType.value = 'error';
+        if (toast.value) {
+            toast.value.show()
         }
         // Revert the input to the last valid page size
         pageSizeInput.value = pageSize.value

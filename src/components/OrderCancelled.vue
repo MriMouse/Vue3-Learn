@@ -18,6 +18,7 @@
                         <tr>
                             <th class="index-col">No.</th>
                             <th class="id-col">Order ID</th>
+                            <th class="id-col">Order Number</th>
                             <th class="id-col">User ID</th>
                             <th class="id-col">Address ID</th>
                             <th class="status-col">Status</th>
@@ -26,12 +27,13 @@
                     </thead>
                     <tbody>
                         <tr v-if="pagedOrders.length === 0">
-                            <td colspan="6" class="empty-row">No cancelled orders found.</td>
+                            <td colspan="7" class="empty-row">No cancelled orders found.</td>
                         </tr>
                         <tr v-for="(order, index) in pagedOrders" :key="order.orderId" class="order-row"
                             :class="{ 'even-row': index % 2 === 1 }">
                             <td class="index-col">{{ (currentPage - 1) * pageSize + index + 1 }}</td>
                             <td class="id-col">{{ order.orderId }}</td>
+                            <td class="id-col">{{ order.orderNumber || order.orderId }}</td>
                             <td class="id-col">{{ order.userId }}</td>
                             <td class="id-col">{{ order.addressId }}</td>
                             <td class="status-col">

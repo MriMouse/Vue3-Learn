@@ -26,10 +26,7 @@
                         borderColor: `${themeColor}4d`    // 30% opacity
                     }">{{ statusText(orderDetail.status) }}</span>
                 </div>
-                <div class="detail-item">
-                    <span class="label">Order Number:</span>
-                    <span class="value">{{ orderDetail.orderNumber || 'N/A' }}</span>
-                </div>
+
                 <div class="detail-item">
                     <span class="label">Created At:</span>
                     <span class="value">{{ formatDateTime(orderDetail.createdAt) }}</span>
