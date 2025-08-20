@@ -85,21 +85,21 @@ function buildCalendarOption(title, dataPairs, rangeStart, rangeEnd) {
             max: Math.max(1, Math.max(...dataPairs.map((d) => d[1] || 0))),
             orient: 'horizontal',
             left: 'center',
-            bottom: 0,
+            bottom: 6,
             inRange: { color: ['#e8f5e9', '#1b5e20'] }
         },
         calendar: {
-            top: 40,
-            left: 20,
+            top: 20,
+            left: 36,
             right: 20,
-            bottom: 60,
+            bottom: 64,
             range: [rangeStart, rangeEnd],
-            cellSize: ['auto', 18],
+            cellSize: ['auto', 14],
             splitLine: { show: true, lineStyle: { color: '#eee' } },
             itemStyle: { color: '#fff', borderColor: '#eee' },
-            dayLabel: { color: '#666' },
-            monthLabel: { color: '#666' },
-            yearLabel: { color: '#333' }
+            dayLabel: { color: '#666', fontSize: 9 },
+            monthLabel: { color: '#666', fontSize: 9 },
+            yearLabel: { show: false }
         },
         series: [{
             type: 'heatmap',
@@ -190,7 +190,7 @@ async function renderHotShoes(echarts) {
     // 兼容字段：优先 name，否则用 `鞋子#ID`
     const items = list.map((it) => ({
         name: it?.shoe?.name || it?.name || `鞋子 #${it?.shoeId}`,
-        clicks: Number(it?.clickCount || it?.click_count || it?.clicks || 0)
+        clicks: Number((it?.clickCount ?? it?.click_count ?? it?.clicks ?? it?.click_count) || 0)
     }))
     // 降序
     items.sort((a, b) => b.clicks - a.clicks)
@@ -199,14 +199,14 @@ async function renderHotShoes(echarts) {
 
     hotShoesChart = echarts.init(hotShoesRef.value)
     hotShoesChart.setOption({
-        grid: { left: 120, right: 20, top: 20, bottom: 40 },
+        grid: { left: 200, right: 20, top: 20, bottom: 40 },
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         xAxis: { type: 'value', axisLine: { lineStyle: { color: '#999' } }, splitLine: { lineStyle: { color: '#eee' } } },
         yAxis: {
             type: 'category',
             data: names,
             axisLine: { lineStyle: { color: '#999' } },
-            axisLabel: { color: '#333', interval: 0 }
+            axisLabel: { color: '#333', interval: 0, width: 180, overflow: 'truncate' }
         },
         dataZoom: [
             { type: 'slider', yAxisIndex: 0, right: 0, start: 0, end: Math.min(100, 100 * (10 / Math.max(1, names.length))) },
@@ -216,8 +216,19 @@ async function renderHotShoes(echarts) {
             type: 'bar',
             data: values,
             barWidth: 14,
-            itemStyle: { color: '#111' },
-            label: { show: true, position: 'right', color: '#111' }
+            itemStyle: {
+                color: {
+                    type: 'linear', x: 0, y: 0, x2: 1, y2: 0,
+                    colorStops: [
+                        { offset: 0, color: '#00e5ff' },
+                        { offset: 1, color: '#00bfa5' }
+                    ]
+                },
+                shadowColor: 'rgba(0, 229, 255, 0.35)',
+                shadowBlur: 8,
+                borderRadius: [4, 10, 10, 4]
+            },
+            label: { show: true, position: 'right', color: '#006064' }
         }]
     })
 }

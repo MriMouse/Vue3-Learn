@@ -1,5 +1,8 @@
 <template>
     <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete User"
+        message="Are you sure you want to delete this user? This operation cannot be undone." confirm-text="Delete"
+        cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm" @cancel="handleDeleteCancel" />
     <div class="user-container">
         <div class="user-header">
             <h2 class="title">
@@ -106,6 +109,7 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import BaseToast from './BaseToast.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 
 // Toast related
 const toast = ref(null)
@@ -117,6 +121,9 @@ const users = ref([])
 const selectedUsers = ref([])
 const loading = ref(false)
 const error = ref('')
+// 删除确认相关状态
+const showDeleteConfirm = ref(false)
+const userToDelete = ref(null)
 
 // Pagination data
 const currentPage = ref(1)
@@ -238,10 +245,57 @@ const toggleUserStatus = async (user) => {
     }
 }
 
-// Delete user (placeholder function)
-const deleteUser = (userId) => {
-    console.log('Delete user:', userId)
-    // TODO: Implement delete functionality
+// Delete user
+const deleteUser = async (userId, showConfirm = true) => {
+    if (showConfirm) {
+        userToDelete.value = userId
+        showDeleteConfirm.value = true
+        return
+    }
+
+    loading.value = true
+    error.value = ''
+    try {
+        const params = new URLSearchParams();
+        params.append('userId', userId);
+        const response = await axios.post('/api/users/deleteUser', params, {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+
+        if (response.data && (response.data.ok === true || response.data.code === 200 || response.data.success)) {
+            await fetchUsers()
+            toastMessage.value = 'User deleted successfully!'
+            toastType.value = 'success'
+            if (toast.value) toast.value.show()
+        } else {
+            throw new Error(response.data?.msg || response.data?.message || 'Delete failed')
+        }
+    } catch (err) {
+        console.error('Error deleting user:', err)
+        error.value = 'Failed to delete user. Please try again.'
+        toastMessage.value = 'Deletion failed: ' + (err.message || 'Unknown error')
+        toastType.value = 'error'
+        if (toast.value) toast.value.show()
+    } finally {
+        loading.value = false
+    }
+}
+
+// 删除确认处理
+const handleDeleteConfirm = async () => {
+    if (!userToDelete.value) return
+    try {
+        await deleteUser(userToDelete.value, false)
+        showDeleteConfirm.value = false
+        userToDelete.value = null
+    } catch (e) {
+        // 错误已在 deleteUser 中处理
+    }
+}
+
+const handleDeleteCancel = () => {
+    showDeleteConfirm.value = false
+    userToDelete.value = null
 }
 
 // Pagination methods
