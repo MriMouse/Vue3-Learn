@@ -6,7 +6,11 @@
                 <span class="icon">🚚</span>
                 Shipping Orders
             </h2>
-            <div class="order-count">Total: {{ filteredOrders.length }} orders</div>
+            <div class="header-right">
+                <div class="order-count">Total: {{ filteredOrders.length }} orders</div>
+                <input v-model.trim="searchOrderNumber" type="text" class="search-input"
+                    placeholder="Search Order Number" />
+            </div>
         </div>
 
         <div v-if="loading" class="loading">Loading orders...</div>
@@ -99,6 +103,7 @@ const toastType = ref('error') // Default type
 const allOrders = ref([])
 const loading = ref(true)
 const error = ref('')
+const searchOrderNumber = ref('')
 
 // Modal related
 const showDetailModal = ref(false)
@@ -110,7 +115,15 @@ const pageSize = ref(5)
 const pageSizeInput = ref(pageSize.value)
 
 // Computed property to filter orders with status 2 (Shipping)
-const filteredOrders = computed(() => allOrders.value.filter(order => Number(order.status) === 2))
+const filteredOrders = computed(() => {
+    const statusFiltered = allOrders.value.filter(order => Number(order.status) === 2)
+    const keyword = String(searchOrderNumber.value || '').toLowerCase()
+    if (!keyword) return statusFiltered
+    return statusFiltered.filter(order => {
+        const display = String(order.orderNumber || order.orderId).toLowerCase()
+        return display.includes(keyword)
+    })
+})
 
 // Pagination computed properties
 const totalPages = computed(() => {
@@ -291,6 +304,10 @@ watch(pageSize, (newValue) => {
     pageSizeInput.value = newValue
 })
 
+watch(searchOrderNumber, () => {
+    currentPage.value = 1
+})
+
 // Lifecycle hook
 onMounted(() => {
     fetchOrders()
@@ -339,6 +356,25 @@ onMounted(() => {
     background: rgba(23, 162, 184, 0.1);
     padding: 8px 16px;
     border-radius: 20px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.search-input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    min-width: 220px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #17a2b8;
 }
 
 .table-container {
