@@ -135,6 +135,11 @@ const closeModal = () => {
 };
 
 const statusText = (status) => {
+    const numStatus = Number(status);
+    // 检查状态码是否在10-20之间
+    if (numStatus > 10 && numStatus <= 20) {
+        return 'Return Applied';
+    }
     const map = {
         1: 'Pending Shipment',
         2: 'Shipping',
