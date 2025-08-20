@@ -86,7 +86,17 @@ function buildCalendarOption(title, dataPairs, rangeStart, rangeEnd) {
             orient: 'horizontal',
             left: 'center',
             bottom: 6,
-            inRange: { color: ['#e8f5e9', '#1b5e20'] }
+            calculable: true,
+            inRange: {
+                color: [
+                    '#f0fff4', // very light green
+                    '#c8e6c9', // light green
+                    '#81c784', // medium green
+                    '#43a047', // dark green
+                    '#1b5e20', // very dark green
+                    '#001a00'  // near-black green
+                ]
+            }
         },
         calendar: {
             top: 20,
