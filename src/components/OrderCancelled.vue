@@ -114,7 +114,7 @@ const pageSizeInput = ref(pageSize.value)
 
 // Computed property to filter orders with status 6 (Cancelled)
 const filteredOrders = computed(() => {
-    const statusFiltered = allOrders.value.filter(order => Number(order.status) === 6)
+    const statusFiltered = allOrders.value.filter(order => Number(order.status) === 6 || Number(order.status) === 4)
     const keyword = String(searchOrderNumber.value || '').toLowerCase()
     if (!keyword) return statusFiltered
     return statusFiltered.filter(order => {
