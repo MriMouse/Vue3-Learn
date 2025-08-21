@@ -2,9 +2,16 @@
     <BaseToast ref="toast" :message="toastMessage" :type="toastType" />
 
     <!-- 删除产品确认对话框 -->
-    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Product" message="Are you sure you want to delete this product? All related images and inventory information will also be deleted. This operation cannot be undone."
+    <ConfirmDialog v-model:visible="showDeleteConfirm" title="Delete Product"
+        message="Are you sure you want to delete this product? All related images and inventory information will also be deleted. This operation cannot be undone."
         confirm-text="Delete" cancel-text="Cancel" icon="🗑️" type="danger" @confirm="handleDeleteConfirm"
         @cancel="handleDeleteCancel" />
+
+    <!-- 删除图片确认对话框 -->
+    <ConfirmDialog v-model:visible="showImageDeleteConfirm" title="Delete Image"
+        message="Are you sure you want to remove this image? It will be deleted only after you save the changes."
+        confirm-text="Delete" cancel-text="Cancel" icon="🖼️" type="warning" @confirm="handleImageDeleteConfirm"
+        @cancel="handleImageDeleteCancel" />
 
     <div class="product-container">
         <div class="product-header">
@@ -286,7 +293,7 @@
                                             class="image-preview-item existing">
                                             <img :src="`/api/shoeImg/getImage/${image.imagePath}`"
                                                 :alt="image.imagePath">
-                                            <button type="button" @click="removeExistingImage(image)"
+                                            <button type="button" @click="confirmRemoveExistingImage(image)"
                                                 class="remove-image-btn">✕</button>
                                             <div class="image-name">{{ image.imagePath }}</div>
                                         </div>
@@ -442,6 +449,9 @@ const pageSizeInput = ref(pageSize.value)
 const selectedImages = ref([])
 const existingImages = ref([])
 const imagesToDelete = ref([])
+// 删除图片确认对话框状态
+const showImageDeleteConfirm = ref(false)
+const pendingImageToDelete = ref(null)
 
 // Inventory management
 const showInventoryModal = ref(false)
@@ -698,9 +708,9 @@ const handleDeleteConfirm = async () => {
 
         // 显示成功消息
         toastMessage.value = 'Product deleted successfully!'
-            toastType.value = 'success';
-            if (toast.value) {
-                toast.value.show()
+        toastType.value = 'success';
+        if (toast.value) {
+            toast.value.show()
         }
     } catch (error) {
         console.error('删除失败:', error)
@@ -775,9 +785,26 @@ const removeSelectedImage = (index) => {
     selectedImages.value.splice(index, 1)
 }
 
-const removeExistingImage = (image) => {
+// 先弹出确认对话框，不立即删除
+const confirmRemoveExistingImage = (image) => {
+    pendingImageToDelete.value = image
+    showImageDeleteConfirm.value = true
+}
+
+// 确认后再标记删除并从界面移除
+const handleImageDeleteConfirm = () => {
+    if (!pendingImageToDelete.value) return
+    const image = pendingImageToDelete.value
     imagesToDelete.value.push(image)
     existingImages.value = existingImages.value.filter(img => img.imgId !== image.imgId)
+    pendingImageToDelete.value = null
+    showImageDeleteConfirm.value = false
+}
+
+// 取消删除
+const handleImageDeleteCancel = () => {
+    pendingImageToDelete.value = null
+    showImageDeleteConfirm.value = false
 }
 
 const uploadImages = async () => {
@@ -1241,9 +1268,9 @@ const handlePageSizeChange = () => {
 
     if (isNaN(newSize) || newSize > 5) {
         toastMessage.value = 'Cannot be greater than 5'
-            toastType.value = 'error';
-            if (toast.value) {
-                toast.value.show()
+        toastType.value = 'error';
+        if (toast.value) {
+            toast.value.show()
         }
         // Revert the input to the last valid page size
         pageSizeInput.value = pageSize.value
