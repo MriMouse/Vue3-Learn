@@ -33,7 +33,7 @@
             <!-- Shipping Fee by Brand -->
             <div class="chart-card">
                 <div class="card-header">
-                    <div class="card-title">Shipping Fee by Brand (status 1/2/3)</div>
+                    <div class="card-title">Fee by Brand</div>
                     <div class="card-actions">
                         <button :class="['toggle-btn', feeChartType === 'pie' ? 'active' : '']"
                             @click="feeChartType = 'pie'">Pie</button>

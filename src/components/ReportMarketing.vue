@@ -66,15 +66,11 @@ const fetchData = async () => {
             shoes: shoes.length, shoeSample: shoes[0]
         })
 
-        // 优先统计成功订单；若没有成功订单，回退统计所有非购物车订单（status !== '10'）
-        const successfulOrderIds = new Set(
-            orders.filter(o => Number(o.status) === 3).map(o => o.orderId)
+        // 统计status为1、2、3的订单
+        const orderIdSet = new Set(
+            orders.filter(o => [1, 2, 3].includes(Number(o.status))).map(o => o.orderId)
         )
-        let orderIdSet = successfulOrderIds
-        if (orderIdSet.size === 0) {
-            orderIdSet = new Set(orders.filter(o => String(o.status) !== '10').map(o => o.orderId))
-        }
-        console.log('[Marketing] orderIdSet sizes', { successSize: successfulOrderIds.size, usedSize: orderIdSet.size })
+        console.log('[Marketing] orderIdSet sizes', { usedSize: orderIdSet.size })
 
         const shoeIdToTypeName = new Map()
         for (const s of shoes) {
